@@ -1,0 +1,371 @@
+---
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+header-includes:
+- \usepackage{tcolorbox}
+- \usepackage{fancyhdr}
+- \usepackage[utf8]{inputenc}
+- \usepackage{wrapfig}
+- \usepackage{amsmath}
+- \usepackage{booktabs}
+- \usepackage{esvect}
+urlcolor: blue
+---
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{Will Nickols}
+\lhead{Section 3}
+\rfoot{Page \thepage}
+
+# Announcements
+
+\begin{wrapfigure}{r}{0.12\textwidth}
+  \centering
+    \vspace*{-1.3cm}
+    \includegraphics[width=\linewidth]{section_qr_code.png}
+\end{wrapfigure}
+
+Make sure to sign in on the [google form](https://forms.gle/xm1DfzuZFNcWU6fH8) (I send a list of which section questions are useful for which pset questions afterwards)
+
+Pset 2 due Friday 9/29
+
+# Introductions (again)
+- Name
+- One question or thought related to lecture last week (bootstrap, randomization, simple regression, correlation)
+
+```{r, echo=F, warning=F, message=F, cache=F}
+list.of.packages <- c("ggplot2", "gridExtra")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+
+library(ggplot2)
+library(gridExtra)
+library(dplyr)
+```
+
+# Everything everywhere all at once (all two-sample continuous comparisons)
+
+Let $X_1,\dots X_{n_1}\sim \textrm{Exp}(1/\mu_1)$ and $Y_1,\dots Y_{n_2}\sim \textrm{Exp}(1/\mu_2)$.
+
+1. Name three tests we've learned so far that would not be applicable for comparing the $X$s and $Y$s.
+
+ANOVA (only two groups), paired $t$-test (different number of observations in each group), proportion test (not proportions)
+
+2. We'll be comparing the Type I and II error for the following tests: a one sample $t$ test, a log-transformed $t$-test, a rank-based test, and a permutation test. We'll consider two scenarios:
+- First, $n_1=5$, $n_2=15$ with $\mu_1=\mu_2=5$ when calculating the Type I error rate and $\mu_1=5$ and $\mu_2=3$ when calculating the Type II error rate.
+- Second, the same as before but with $n_1=20$.
+
+Why should we use $\mu_1=\mu_2$ when calculating the Type I error rate but $\mu_1\neq\mu_2$ when calculating the Type II error rate?
+
+A type I error is when we reject the null but we should have retained it. We should retain the null when $\mu_1$ and $\mu_2$ are indeed equal. A type II error is when we fail to reject the null when we should have rejected it. Therefore, the means must be different to make this error.
+
+3. Compare the results. What has the highest power? Which maintain their nominal false positive rates? Which test is best in which situations?
+
+```{r, cache=T, echo=F}
+set.seed(139)
+nsims = 5000
+
+run_sim <- function(mu_1, mu_2, n, m) {
+  nboot = 250
+  
+  t_test_out = vector(length = nsims)
+  transformed_t_out = vector(length = nsims)
+  rank_out = vector(length = nsims)
+  perm_test_out = vector(length = nsims)
+
+  for (i in 1:nsims) {
+    x = rexp(n, 1/mu_1)
+    y = rexp(m, 1/mu_2)
+    t_test_out[i] = t.test(x, y)$p.value
+    transformed_t_out[i] = t.test(log(x), log(y))$p.value
+    rank_out[i] = wilcox.test(x, y)$p.value
+    df = cbind(c(x,y), c(rep(0, n), rep(1, m)))
+    boot_diff = vector(length = nboot)
+    for (j in 1:nboot) {
+      df_tmp = cbind(df[,1], sample(df[,2], n+m))
+      boot_diff[j] = mean(df_tmp[df_tmp[,2]==0,1]) - mean(df_tmp[df_tmp[,2]==1,1])
+    }
+    perm_test_out[i] = mean(abs(boot_diff) >= abs(mean(x) - mean(y)))
+  }
+  
+  output = data.frame("test" = c("t test", "log t test", "rank test", "perm test"),
+                 "diff" = c(mean(t_test_out <= 0.05), mean(transformed_t_out <= 0.05), 
+                               mean(rank_out <= 0.05), mean(perm_test_out <= 0.05)),
+                 "not_diff" = c(mean(t_test_out > 0.05), mean(transformed_t_out > 0.05), 
+                               mean(rank_out > 0.05), mean(perm_test_out > 0.05)))
+  
+  return(output)
+}
+
+output_1 <- run_sim(5, 3, 5, 15)
+output_2 <- run_sim(5, 5, 5, 15)
+
+out_df <- data.frame("Test (First scenario)" = c("t test", "log t test", "Rank test", "Permutation test"),
+           "Type I" = round(output_2$diff, 3),
+           "Type II" = round(output_1$not_diff, 3), check.names = F)
+
+knitr::kable(out_df)
+
+output_1 <- run_sim(5, 3, 20, 15)
+output_2 <- run_sim(5, 5, 20, 15)
+
+out_df <- data.frame("Test (Second scenario)" = c("t test", "log t test", "Rank test", "Permutation test"),
+           "Type I" = round(output_2$diff, 3),
+           "Type II" = round(output_1$not_diff, 3), check.names = F)
+
+knitr::kable(out_df)
+```
+
+In the first scenario where we have a very small sample size, the $t$-test is slightly above its nominal Type I error rate (0.05), and its type II error is the highest in the group (which means it has the lowest power). However, its assumptions are severely violated by using a very right-skewed distribution with only 5 data points. The other tests are closer to their nominal Type I error rates (0.05) with the permutation test having the highest power.
+
+In the second scenario where we have reasonable sample sizes, all the tests have about the same Type I error rate (near 0.05), but the $t$ test has the highest power. The takeaway is that even with skewed distributions, as long as the sample size is at least moderate, the $t$ test will have the highest power while maintaining its nominal Type I error rate.
+
+4. What assumptions do we need for each test and what hypotheses are we testing?
+
+- $t$-test
+  - Assumptions: independence within and between groups and normality (or a large sample size)
+  - Hypotheses: $H_0:$ Means are equal; $H_a$: Means are not equal.
+- Log-transformed $t$-test
+  - Assumptions: independence, symmetry once transformed, and normality once transformed (or a large sample size)
+  - Hypotheses: $H_0:$ Ratio of medians is 1; $H_a:$ Ratio of medians isn't 1.
+- Rank-based test
+  - Assumptions: independence; $n_1,n_2\geq10$
+  - Hypotheses: $H_0:$ The two distributions are the same, $H_a$: The two distributions are different.
+- Permutation test
+  - Assumptions: independence
+  - Hypotheses: $H_0:$ The distribution of outcomes is not related to group status. $H_a:$ It is related.
+  
+5. The following simulation uses the same set-ups as above to calculate a $t$-based confidence interval for the difference in means, a $t$-based confidence interval for the ratio of medians, a percentile bootstrap interval for the difference in means, and a reversed percentile bootstrap interval for the difference in means. Shown below are the coverage probability and interval width for each. Comment on the results.
+
+```{r, cache=T, echo=F}
+set.seed(139)
+nsims = 5000
+
+run_sim2 <- function(mu_1, mu_2, n, m) {
+  nboot = 250
+  
+  t_cap = vector(length = nsims)
+  t_length = vector(length = nsims)
+  t_med_cap = vector(length = nsims)
+  t_med_length = vector(length = nsims)
+  perc_boot_cap = vector(length = nsims)
+  perc_boot_length = vector(length = nsims)
+  rev_boot_cap = vector(length = nsims)
+  rev_boot_length = vector(length = nsims)
+  
+  df = min(n-1, m-1)
+  
+  for (i in 1:nsims) {
+    x = rexp(n, 1/mu_1)
+    y = rexp(m, 1/mu_2)
+    
+    # T-based interval
+    t_out = t.test(x, y)$conf.int
+    t_cap[i] = mu_1-mu_2 >= t_out[1] & mu_1-mu_2 <= t_out[2]
+    t_length[i] = t_out[2] - t_out[1]
+    
+    # Transformed t interval
+    t_med_out = t.test(log(x), log(y))$conf.int
+    t_med_cap[i] = qexp(0.5, 1/mu_1)/qexp(0.5, 1/mu_2) >= exp(t_med_out[1]) & 
+      qexp(0.5, 1/mu_1)/qexp(0.5, 1/mu_2) <= exp(t_med_out[2])
+    t_med_length[i] = exp(t_med_out[2]) - exp(t_med_out[1])
+    
+    # Bootstrap
+    boot_diff = vector(length = nboot)
+    for (j in 1:nboot) {
+      x_star = x[sample(1:n, n, replace = T)]
+      y_star = y[sample(1:m, m, replace = T)]
+      boot_diff[j] = mean(x_star) - mean(y_star)
+    }
+    
+    perc_boot_cap[i] = mu_1-mu_2 >= quantile(boot_diff, 0.025) & 
+      mu_1-mu_2 <= quantile(boot_diff, 0.975)
+    perc_boot_length[i] = quantile(boot_diff, 0.975) - quantile(boot_diff, 0.025)
+    
+    bounds = mean(x)-mean(y) - 
+      (quantile(boot_diff, c(0.025, 0.975)) - (mean(x)-mean(y)))
+    
+    rev_boot_cap[i] = mu_1-mu_2 >= bounds[2] & mu_1-mu_2 <= bounds[1]
+    rev_boot_length[i] = bounds[1] - bounds[2]
+  }
+  
+  output = data.frame("name" = c("t interval", "log t interval",
+                                       "percentile boot", "reverse boot"),
+                            "capture proportion" = c(mean(t_cap), mean(t_med_cap), 
+                               mean(perc_boot_cap), mean(rev_boot_cap)),
+                            "length" = c(mean(t_length), mean(t_med_length), 
+                               mean(perc_boot_length), mean(rev_boot_length)),
+                      check.names = F)
+  
+  return(output)
+}
+
+output_1 <- run_sim2(5, 3, 5, 15)
+output_2 <- run_sim2(5, 5, 5, 15)
+
+out_df <- data.frame("Interval (First scenario)" = c("t interval", "Transformed t interval", "Percentile bootstrap", "Rev. Perc. bootstrap"),
+           "Coverage probability (means different)" = round(output_1$`capture proportion`, 3),
+           "Interval width (means different)" = round(output_1$length, 2),
+           "Coverage probability (means same)" = round(output_2$`capture proportion`, 3),
+           "Interval width (means same)" = round(output_2$length, 2),
+           check.names = F)
+
+knitr::kable(out_df)
+
+output_3 <- run_sim2(5, 3, 20, 15)
+output_4 <- run_sim2(5, 5, 20, 15)
+
+out_df2 <- data.frame("Interval (Second scenario)" = c("t interval", "Transformed t interval", "Percentile bootstrap", "Rev. Perc. bootstrap"),
+           "Coverage probability (means different)" = round(output_3$`capture proportion`, 3),
+           "Interval width (means different)" = round(output_3$length, 2),
+           "Coverage probability (means same)" = round(output_4$`capture proportion`, 3),
+           "Interval width (means same)" = round(output_4$length, 2),
+           check.names = F)
+
+knitr::kable(out_df2)
+```
+
+When one of the samples is very small and there's a difference, all of the intervals except the interval for the ratio of medians show coverage probabilities quite a bit below their nominal levels. Interestingly, the percentile methods are even worse than the t interval. When the means are the same, all the methods perform a bit better. The interval widths correlate inversely with the coverage probability: smaller intervals have lower coverage probabilities. 
+
+When the samples are larger, the coverage probabilities are closer to their nominal levels, but the percentile methods still give intervals that are too narrow and therefore have slightly lower coverage probabilities. Note that in both scenarios the transformed $t$ interval is trying to capture something different than the other intervals, explaining its lower width.
+
+6. Based on the results above, which is the best confidence interval to use?
+
+The $t$ or transformed $t$ have coverage probabilities closest to the nominal confidence level, so we should use those. Shorter intervals would be nice if the intervals maintained the same coverage probabilities, but otherwise they're just not calibrated and therefore not useful.
+
+7. Imagine now that we wanted to construct a confidence interval for $\mu_1$ by using a studentized bootstrap interval.  If we knew the data were distributed exponentially, what's one small change we could make to the confidence interval for $\mu_1$ so that the interval is equally as wide or narrower while keeping the same confidence level?
+
+Make the lower bound 0 if it's ever negative in the studentized bootstrap interval.
+
+\newpage
+
+# Slope independent of outcome mean
+
+In this problem, we'll show that the slope in a linear regression ($\hat{\beta}_1$) is independent of the mean outcome ($\bar{Y}$). Suppose we have pairs $(X_i,Y_i)$ for $i\in\{1,...,n\}$.
+
+1. Recall that in a simple linear regression we assume $Y_i=\beta_0+\beta_1 X_i + \epsilon_i$ with $X_i$ known and $\epsilon_i\sim\mathcal{N}(0,\sigma^2)$. The vector $(\bar{Y}, Y_1-\bar{Y}, Y_2-\bar{Y}, ..., Y_n-\bar{Y})^T$ has a multivariate Normal distribution. Find the covariance of $\bar{Y}$ and $Y_i-\bar{Y}$.
+
+$$\begin{aligned}\textrm{Cov}(\bar{Y},Y_i-\bar{Y})&=\textrm{Cov}(\bar{Y},Y_i)-\textrm{Cov}(\bar{Y}, \bar{Y})\\
+&=\textrm{Cov}(Y_i/n,Y_i)-\textrm{Var}(\bar{Y})\\
+&=\frac{1}{n}\textrm{Var}(Y_i)-\textrm{Var}\left(\frac{1}{n}\sum_{i=1}^n \beta_0-\beta_1X_i+\epsilon_i\right)\\
+&=\frac{\sigma^2}{n}-\frac{1}{n^2}\sum_{i=1}^n \textrm{Var}(\epsilon_i)\\
+&=0
+\end{aligned}$$
+
+2. What does this imply about $\bar{Y}$ and all the $Y_i-\bar{Y}$?
+
+$\bar{Y}$ is independent of all the $Y_i-\bar{Y}$ since uncorrelated implies independent in a multivarite Normal distribution.
+
+3. What does this say about the relationship between $\bar{Y}$ and $\hat{\beta}_1$? Recall that $$\hat{\beta_1}=\frac{\sum_{i=1}^n(X_i-\bar{X})(Y_i-\bar{Y})}{\sum_{i=1}^n(X_i-\bar{X})^2}$$
+
+$\hat{\beta}_1$ is just a function of the $(Y_i-\bar{Y})$s, so it is also independent of $\bar{Y}$.
+
+\newpage
+
+# Rule of thumb
+
+Suppose we have $n$ pairs of $(X_i, Y_i)$ and we regress $Y$ on $X$ to get a slope $\hat{\beta}_1$ and $X$ on $Y$ to get a slope $\hat{\beta}_1'$. At first glance, it might seem like the $\hat{\beta}_1=1/\hat{\beta}_1'$. However, as you can see in the plots below, this is wrong.
+
+```{r, echo=F, fig.width=6, fig.height=3, fig.align='center', cache=T, warning=F}
+set.seed(139)
+n <- 500
+beta_0 <- 2
+beta_1 <- 0.5
+x <- rnorm(n, 10, 5)
+y <- beta_0 + beta_1 * x + rnorm(n, 0, 3)
+lm1 <- summary(lm(y ~ x))
+plot1 <- ggplot(data.frame(x, y), aes(x=x, y=y)) + 
+  geom_point() + 
+  geom_smooth(method = 'lm', formula = 'y ~ x') + 
+  theme_bw() + 
+  annotate(
+    "text", label = paste0("Slope: ", round(lm1$coefficients[2,1], 3), "\nR2: ", round(lm1$r.squared, 3)),
+    x = -2, y = 25, size = 4, colour = "red"
+  ) + 
+  coord_equal() + 
+  xlim(-8, 28) + 
+  ylim(-8, 28)
+
+lm2 <- summary(lm(x ~ y))
+plot2 <- ggplot(data.frame(x, y), aes(x=y, y=x)) + 
+  geom_point() + 
+  geom_smooth(method = 'lm', formula = 'y ~ x') + 
+  theme_bw() + 
+  xlab("y") + 
+  ylab("x") +
+  annotate(
+    "text", label = paste0("Slope: ", round(lm2$coefficients[2,1], 3), "\nR2: ", round(lm2$r.squared, 3)),
+    x = -2, y = 25, size = 4, colour = "red"
+  ) + 
+  coord_equal() + 
+  xlim(-8, 28) + 
+  ylim(-8, 28)
+
+grid.arrange(plot1, plot2, ncol=2)
+```
+
+1. Why is this wrong?
+
+Because we are only trying to minimize the vertical residuals, we end up with non-reciprocal slopes. You can imagine a case where $X$ and $Y$ are independent, so both slopes would be 0, but clearly these are not reciprocals. This can also be viewed as a case of regression to the mean in which an extreme $X$ value predicts a $Y$ value that's not quite as extreme.
+
+2. In the rest of the problem, we'll try to find the proper relationship between the two slopes. Recall that when regressing $Y$ on $X$, we have
+$$R^2=1-\frac{\sum_{i=1}^n(Y_i-\hat{Y_i})^2}{\sum_{i=1}^n(Y_i-\bar{Y})^2}$$
+Consider our simple regression with the estimators $$\hat{\beta}_1=\frac{\sum_{i=1}^n(Y_i-\bar{Y})(X_i-\bar{X})}{\sum_{i=1}^n(X_i-\bar{X})^2}, \;\;\;\hat{\beta}_{0}=\bar{Y}-\hat{\beta}_{1}\bar{X}$$
+and consider the flipped regression estimators $$\hat{\beta}_{1}'=\frac{\sum_{i=1}^n(Y_i-\bar{Y})(X_i-\bar{X})}{\sum_{i=1}^n(Y_i-\bar{Y})^2}, \;\;\;\hat{\beta}_{0}'=\bar{X}-\hat{\beta}_{1}'\bar{Y}$$ 
+Find an expression for $\hat{\beta}_{1}'$ in terms of $\hat{\beta}_{1}$.
+
+$$\hat{\beta}_{1}'=\hat{\beta}_{1}\frac{\sum_{i=1}^n(X_i-\bar{X})^2}{\sum_{i=1}^n(Y_i-\bar{Y})^2}$$
+
+3. Solve for $R^2$ in terms of $\hat{\beta}_1$ and $\frac{\sum_{i=1}^n(X_i-\bar{X})^2}{\sum_{i=1}^n(Y_i-\bar{Y})^2}$. You may use the fact that $$\sum_{i=1}^n(Y_i-\bar{Y})^2=\sum_{i=1}^n(Y_i-\hat{Y_i})^2+\sum_{i=1}^n(\hat{Y_i}-\bar{Y})^2$$ (See my Stat 111 section 6 notes for why this is the case in simple linear regression.)
+
+$$\begin{aligned}R^2&=1-\frac{\sum_{i=1}^n(Y_i-\hat{Y}_i)^2}{\sum_{i=1}^n(Y_i-\bar{Y})^2}\\
+&=\frac{\sum_{i=1}^n(Y_i-\bar{Y})^2-\sum_{i=1}^n(Y_i-\hat{Y}_i)^2}{\sum_{i=1}^n(Y_i-\bar{Y})^2}\\
+&=\frac{\sum_{i=1}^n(\hat{Y_i}-\bar{Y})^2}{\sum_{i=1}^n(Y_i-\bar{Y})^2}\\
+&=\frac{\sum_{i=1}^n(\hat{\beta}_0+\hat{\beta}_1\bar{X}-(\hat{\beta}_0+\hat{\beta}_1X_i))^2}{\sum_{i=1}^n(Y_i-\bar{Y})^2}\\
+&=\frac{\sum_{i=1}^n(\hat{\beta}_1\bar{X}-\hat{\beta}_1X_i)^2}{\sum_{i=1}^n(Y_i-\bar{Y})^2}\\
+&=\hat{\beta}_1^2\frac{\sum_{i=1}^n(X_i-\bar{X})^2}{\sum_{i=1}^n(Y_i-\bar{Y})^2}\\
+\end{aligned}$$
+
+4. Use this to write an expression for $\hat{\beta}_1'$ in terms of $R^2$ and $\hat{\beta}_1$.
+
+$$\hat{\beta}_1'=\frac{R^2}{\hat{\beta}_1}$$
+Notably, $0\leq R^2\leq 1$ for an OLS model, so $0\leq \hat{\beta}_1'\leq 1/\hat{\beta}_1$. Not only does this give us the relation between the slopes, it does so in a way that uses the two most commonly reported statistics about the model: the estimated slope and the $R^2$.
+
+\newpage
+
+# Real data linear model
+
+These problems will deal with a dataset of country-level statistics from [UNdata](https://data.un.org/) and [Varieties of Democracy](https://v-dem.net/data/the-v-dem-dataset/).
+
+```{r, echo=F}
+# Read in the data
+countries <- read.csv("data/country_stats.csv", check.names = F)
+```
+
+1. Suppose we want to know the relationship between log 2010 GDP per capita and the 2010 life expectancy for females at birth. Interpret the following output.
+```{r, echo=F}
+countries_2010 <- countries[countries$Year == 2010,]
+summary(lm(`Life expectancy at birth for females (years)` ~ log2(`GDP per capita (US dollars)`), countries_2010))
+```
+This shows that a change in log2 GDP per capita of 1 (a doubling of GDP per capita) corresponds to an extra 3.35 years of life expected at birth.
+
+2. Suppose we read this result in a paper but what we actually cared about was the regression of log2 GDP per capita on female life expectancy at birth. What can we conclude about this alternative regression?
+
+Using the result we derived above, our slope would be $R^2/\hat{\beta}_1=0.6382/3.3499=0.1905$, so an increase in female life expectancy at birth of 1 year is associated with a 0.19 increase in log2 GDP per capita (1.14x multiplicative increase).
+
+
+
+
+
+
+
+
+
+
+
+
+
+

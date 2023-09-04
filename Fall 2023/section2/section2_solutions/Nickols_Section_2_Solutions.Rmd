@@ -1,0 +1,326 @@
+---
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+header-includes:
+- \usepackage{tcolorbox}
+- \usepackage{fancyhdr}
+- \usepackage[utf8]{inputenc}
+- \usepackage{wrapfig}
+- \usepackage{amsmath}
+- \usepackage{booktabs}
+- \usepackage{esvect}
+urlcolor: blue
+---
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{Will Nickols}
+\lhead{Section 2}
+\rfoot{Page \thepage}
+
+# Announcements
+
+\begin{wrapfigure}{r}{0.12\textwidth}
+  \centering
+    \vspace*{-1.3cm}
+    \includegraphics[width=\linewidth]{section_qr_code.png}
+\end{wrapfigure}
+
+Make sure to sign in on the [google form](https://forms.gle/xm1DfzuZFNcWU6fH8) (I send a list of which section questions are useful for which pset questions afterwards)
+
+Pset 1 due Friday 9/22
+
+# Introductions (again)
+- Name
+- One question or thought related to lecture last week (ANOVA, $F$-test, ranks)
+
+```{r, echo=F, warning=F, message=F, cache=F}
+list.of.packages <- c("ggplot2", "gridExtra", "MASS", "dplyr")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+
+library(ggplot2)
+library(gridExtra)
+library(dplyr)
+```
+
+# Manipulating new distributions
+
+Let $T_n\sim t_n$. Find the following:
+
+1. Distribution of $T_n^2$. Hint: Think about the representation of $T_n$.
+
+We can represent $T_n$ as $Z/\sqrt{V_n/n}$ where $Z$ is a standard Normal and $V_n$ is a $\chi^2_n$ random variable. Then,
+
+$$T_n^2=Z^2/(V_n/n)=(Z^2/1)/(V_n/n)=F_{1,n}$$
+
+since $Z^2$ has a $\chi^2_1$ distribution and this is our representation of the $F$ random variable.
+
+
+2. Distribution of $T^{-2}$
+
+$$T_n^{-2}=F_{1,n}^{-1}=F_{n,1}$$
+
+3. Let $X_1,...,X_n\sim\textrm{Expo}(\alpha)$. Find the $k$ (in terms of $\alpha$) such that $k\sum_{i=1}^nX_i\sim\chi^2_{2n}$.
+
+$$2\alpha\sum_{i=1}^nX_i\sim\textrm{Gamma}(n, 1/2)\sim\chi^2_{2n}\implies k=2\alpha$$
+
+\newpage
+
+# Simulations
+
+1. Let $X_1, X_2,\dots, X_n\sim \mathcal{N}(\mu, \sigma^2)$. Then, let $X_{i,1}=X_i+\epsilon_{i,1}$ and $X_{i,2}=X_i+\beta+\epsilon_{i,2}$ with $\epsilon_{i,j}\sim\mathcal{N}(0,\sigma^2)$. Suppose we simulate many paired and unpaired $t$-tests for the difference in the mean of the $X_{i,1}$s vs. the mean of the $X_{i,2}$s. If $\beta$ is non-zero, which color is the paired $t$-test?
+
+```{r, echo=F, fig.width=5, fig.height=3, fig.align='center', cache=T, warning=F}
+n = 10
+beta = 1
+nsim = 1000
+
+paired_vec = vector(length = nsim)
+unpaired_vec = vector(length = nsim)
+for (i in 1:nsim) {
+  x = rnorm(n, 10, 3)
+  x_1 = x + rnorm(n, 5, 3)
+  x_2 = x + beta + rnorm(n, 0, 3)
+  paired_vec[i] = t.test(x_1-x_2)$statistic
+  unpaired_vec[i] = t.test(x_1, x_2)$statistic
+}
+
+df = data.frame("t-stat" = c(paired_vec, unpaired_vec), 
+                "paired" = c(rep("Paired", nsim), rep("Unpaired", nsim)), check.names = F)
+
+ggplot(df, aes(x=`t-stat`, fill=paired)) + 
+  geom_histogram(alpha=0.4, position="identity", bins = 30) + 
+  theme_bw() + 
+  ylab("Count") +
+  theme(legend.position = "none")
+```
+
+Because this is the proper set-up for a paired $t$-test and there is a difference in means ($\beta\neq0$), the paired $t$-test will have higher power and therefore larger $t$ statistics. Thus, the paired $t$-test is red.
+
+2. Suppose we have some $\beta_i$ for $i\in\{1,...,n_\beta\}$ that are not equal. Let $X_{i,j}=\beta_i+\epsilon_{i,j}$ for $j=1$ to $n$ with $\epsilon_{i,j}\sim\mathcal{N}(0, \sigma^2)$. We want to test whether $\beta_1=\beta_2=\dots=\beta_{n_\beta}$. We'll run a simulation in which we consider two cases:
+- In the first case, we use the proper groupings of the $X_{i,j}$; that is, there are $n$ observations in each group, all with the same $\beta_i$.
+- In the second case, we'll subdivide each of these groups into 2 so that there are $n/2$ observations in each group with two groups for each $\beta_i$.
+
+We'll run an ANOVA in each case and repeat this many times. Which color is which case?
+
+```{r, echo=F, fig.width=5, fig.height=3, fig.align='center', cache=T, warning=F}
+nsim = 1000
+n_1 = 10
+n_2 = 30
+n_3 = 2
+betas = 1:n_1
+
+f_correct = vector(length = nsim)
+f_incorrect = vector(length = nsim)
+
+for (i in 1:nsim) {
+  df = data.frame(matrix(nrow = 0, ncol = 0))
+  for (beta in betas) {
+    x = beta + rnorm(n_2, 0, 5)
+    df = rbind(df, cbind(x, beta))
+  }
+  df$beta <- as.factor(df$beta)
+  f_correct[i] = summary(aov(x~beta, df))[[1]][1,'F value']
+  df$beta = as.numeric(as.character(df$beta))
+  df$beta = (df$beta - 1) * n_3 + rep(rep(0:(n_3-1), n_2/n_3), n_1)
+  df$beta <- as.factor(df$beta)
+  f_incorrect[i] = summary(aov(x~beta, df))[[1]][1,'F value']
+}
+
+df = data.frame("f-stat" = c(f_correct, f_incorrect), 
+                "split" = c(rep("Correct", nsim), rep("Incorrect", nsim)), check.names = F)
+
+ggplot(df, aes(x=`f-stat`, fill=split)) + 
+  geom_histogram(alpha=0.4, position="identity", bins=30) + 
+  theme_bw() + xlim(0, 30) + 
+  ylab("Count") + 
+  theme(legend.position = "none")
+```
+
+Since the group means in subdivided groups will be similar, the sum of squares within and between groups doesn't change much. However, by increasing the number of groups, we're increasing the degrees of freedom in the between-group part and decreasing the degrees of freedom in the within-group part ($k$ increases):
+$$F=\frac{\sum_{i=1}^Kn_i(\bar{Y_i}-\bar{Y})^2/(k-1)}{\sum_{i=1}^K(n_i-1)S_i^2/(n-k)}$$
+As $k$ doubles, the $f$-statistic decreases. Thus, the blue is the subdivided groups.
+
+3. Let $X_i\sim\mathcal{N}(0, 1)$ for $i$ from $1$ to $n$. Let $Y_i\sim -1+\textrm{Expo}(1)$ for $i$ from $1$ to $n$. Suppose we conduct a two-sided, one-sample $t$-test for $H_0:\mu=0$ vs. $H_a:\mu\neq 0$ and record the p-value. The plots below show p-values from simulations repeating this many times for the two distributions and $n=5$ or $n=20$. Identify which is which.
+
+```{r, echo=F, fig.width=7, fig.height=3, fig.align='center', cache=T, warning=F}
+set.seed(139)
+nsims = 200000
+
+out_df <- data.frame(matrix(nrow = 0, ncol = 2))
+
+for (n in c(5, 20)) {
+  out_df <- rbind(out_df, cbind(rep(paste0("Normal n=", n), nsims),
+                                replicate(nsims, t.test(rnorm(n, 0, 1))$p.value)))
+  out_df <- rbind(out_df, cbind(rep(paste0("Expo n=", n), nsims),
+                                replicate(nsims, t.test(rexp(n, 1) - 1)$p.value)))
+}
+out_df <- data.frame(out_df)
+colnames(out_df) <- c("Version", "P-value")
+out_df$`P-value` <- as.numeric(out_df$`P-value`)
+
+ggplot(out_df, aes(x=`P-value`)) + 
+  facet_grid(cols = vars(Version)) + 
+  geom_histogram(bins = 20) + 
+  xlim(c(0,1)) + 
+  theme_bw() + 
+  ylab("Count") + 
+  theme(strip.text.x = element_blank(),
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+```
+
+The point of this question is to notice that when the $t$-statistic has the $t$ distribution, the p-values will be uniform. The $t$-statistic will have the $t$ distribution by definition if the observations are Normal, so the third and fourth histograms can be either number of Normals. For the exponential distribution, the mean is 0, but the $t$ distribution of the $t$-statistic relies on the Central Limit Theorem, so the larger $n$ will give more uniform p-values. Thus, the first histogram is the exponential case with $n=20$, and the second is the exponential distribution with $n=5$.
+
+4. Which of the two comparisons do you expect to have the lower p-value? The one with a larger difference in sample means or the one with more data points (40 vs 400)?
+
+```{r, echo=F, fig.width=5, fig.height=3, fig.align='center', cache=T, warning=F}
+set.seed(9)
+
+df <- data.frame("comparison" = c(rep("Comparison 1", 40), rep("Comparison 2", 400)),
+           "group" = c(rep("Group 1", 20), rep("Group 2", 20), rep("Group 1", 200), rep("Group 2", 200)),
+           "values" = c(rnorm(20, 5.4, 3), rnorm(20, 6.4, 3), rnorm(200, 5, 3), rnorm(200, 5.5, 3)))
+
+ggplot(df, aes(x=group, y=values)) + 
+  facet_grid(cols = vars(comparison)) + 
+  geom_boxplot(alpha=0.4, outlier.size = 0) + 
+  xlab("Group") + 
+  ylab("Value") + 
+  theme_bw() + 
+  geom_jitter(color="black", size=1, alpha=0.9, width = 0.1)
+```
+
+Even though the standard deviations are the same in both, what matters is the standard error, which is much lower in the second because of the increased sample size. The difference in sample means in the second comparison is about half that of the first comparison. However, the standard error of the second comparison is about $1/\sqrt{10}=0.316$ times the standard error of the first comparison, so the $t$-statistic is about 1.58 times as large in the second comparison. Therefore, the second will have the lower p-value.
+
+```{r, cache=T}
+# Comparison 1
+t.test(df$values[df$group == "Group 1" & df$comparison == "Comparison 1"],
+       df$values[df$group == "Group 2" & df$comparison == "Comparison 1"])$p.value
+
+# Comparison 2
+t.test(df$values[df$group == "Group 1" & df$comparison == "Comparison 2"],
+       df$values[df$group == "Group 2" & df$comparison == "Comparison 2"])$p.value
+```
+
+\newpage
+
+# Variance by decomposition
+
+Let $X\sim\textrm{Bin}(n,p)$ and $Y\sim\textrm{Bin}(m,p)$. Let $X+Y=r$.
+
+1. Find the variance of $X|r$ by using the variance of a known distribution (See 3.9.2 in the Stat 110 book for a hint).
+
+$X|r\sim \textrm{HGeom}(n,m,r)$, so by the variance of the hypergeometric we have:
+$$\textrm{Var}(X|r)=\frac{n+m-r}{n+m-1}\cdot\frac{nr}{n+m}\cdot\frac{m}{n+m}$$
+
+2. Find the variance of $X|r$ by using the fact that $\textrm{Var}(X+Y|r)=0$ and treating $X$ and $Y$ as the sum of Bernoulli random variables. Verify that the two answers are the same. (Hint: Once you get to the Bernoulli random variables, think about how knowing the sum is $r$ makes $p$ irrelevant.)
+
+First, note that the variance of a constant is 0, so $\textrm{Var}(X+Y|r)=0$. Each of $X$ and $Y$ can be decomposed into Bernoullis, and each of these have the same variance and covariance by symmetry. Therefore, $$0=\textrm{Var}(X+Y|r)=(n+m)\textrm{Var}(I_1|r)+2{n+m\choose 2}\textrm{Cov}(I_1,I_2|r)$$ Then, we can solve for the covariance: $\textrm{Cov}(I_1,I_2|r)=-\textrm{Var}(I_1|r)/(n+m-1)$. Conditioning on $r$, $P(I_1=1|r)=\frac{r}{n+m}$, so $$\textrm{Var}(I_1|r)=\frac{r}{n+m}\cdot\frac{n+m-r}{n+m}$$ and $$\textrm{Cov}(I_1,I_2|r)=-\frac{r}{n+m}\cdot\frac{n+m-r}{(n+m)(n+m-1)}$$
+Then, building up $X$ again, 
+$$\begin{aligned}
+\textrm{Var}(X|r)&=\textrm{Var}(\sum_{i=1}^nI_i)\\
+&=n\cdot\frac{r}{n+m}\cdot\frac{n+m-r}{n+m}-2{n\choose 2}\frac{r}{n+m}\cdot\frac{n+m-r}{(n+m-1)(n+m)}\\
+&=\frac{nr(n+m-r)}{(n+m)^2}\left[1-\frac{n-1}{n+m-1}\right]\\
+&=\frac{nmr(n+m-r)}{(n+m)^2(n+m-1)}
+\end{aligned}$$
+
+\newpage
+
+# Hypothesis testing on real data
+
+These problems will deal with a dataset of country-level statistics from [UNdata](https://data.un.org/) and [Varieties of Democracy](https://v-dem.net/data/the-v-dem-dataset/).
+
+```{r, echo=F}
+# Read in the data
+countries <- read.csv("data/country_stats.csv", check.names = F)
+```
+
+1. Suppose we want to test for a difference in mean 2010 GDP per capita between democracies and non-democracies. The following plots show the distributions. Which tests would be valid?
+
+```{r, echo=F, fig.width=5, fig.height=3, fig.align='center', cache=T, warning=F}
+countries$dem = countries$v2x_polyarchy > 0.5
+tmp_countries <- countries[countries$Year == 2010 & !is.na(countries$dem),]
+
+ggplot(tmp_countries, aes(x=`GDP per capita (US dollars)`, fill=dem)) + 
+  geom_histogram(alpha=0.4, position="identity", bins = 30) + 
+  xlab("GDP per capita") + 
+  ylab("Countries") + 
+  theme_bw() + 
+  labs(fill="Democracy")
+```
+
+An unpaired $t$-test, a rank-sum test, or a log-transformed $t$-test would all be reasonable. The rank-sum test and log-transformed $t$-test would account for the fact that the data is not Normally distributed. However, we have enough data points that the sample means will be approximately normally distributed, so an unpaired $t$-test could work as well.
+
+2. Perform a formal rank-sum test for the difference in GDP per capita between democracies and non-democracies.
+
+```{r, echo=F}
+dem_gdps = countries$`GDP per capita (US dollars)`[countries$Year == 2010 & !is.na(countries$dem) & countries$dem]
+nondem_gdps = countries$`GDP per capita (US dollars)`[countries$Year == 2010 & !is.na(countries$dem) & !(countries$dem)]
+
+wilcox.test(dem_gdps, nondem_gdps)
+```
+Our hypotheses are $H_0:$ the distributions of 2010 GDP per capita are the same between democracies and non-democracies versus $H_a:$ they are different. We get a test statistic of $W=5443$ and a p-value of $7.75\times 10^{-8}$, so we reject the null and conclude that democracies tend to have higher GDPs per capita.
+
+3. Perform a formal log-transformed $t$-test for the difference in GDP per capita between democracies and non-democracies. Give a 95% confidence interval for the ratio of medians.
+
+```{r, echo=F}
+t.test(log(dem_gdps), log(nondem_gdps))
+```
+
+Let $\mu_0$ be the mean log GDP per capita of non-democracies and $\mu_1$ be the mean log GDP per capita of democracies. We are testing $H_0$: $\mu_0=\mu_1$ vs $H_a:$ the two means are different. We get a $t$-statistic of $-5.85$ with $169.6$ degrees of freedom, which corresponds to a p-value of $2.5\times10^{-8}$. Therefore, we reject the null and conclude that democratic countries have higher average log GDP per capita. To find a 95% confidence interval for the ratio of medians, we can exponentiate the current interval: $(\exp(0.82), \exp(1.66))=(2.27,5.24)$.
+
+4. Suppose we wanted to test whether there was a difference in the mean number of doctors per country between 2019 and 2020. What would be a good way to do so?
+
+We should use a paired $t$-test with pairing by country. We can check whether the mean difference in countries' doctor numbers between 2020 and 2019 is significantly non-zero. The $t$-test shows that the difference is not quite significant, but only 15 countries have data for both 2020 and 2019, so our test might just have not had enough power.
+```{r, echo=F}
+df_2019 <- data.frame(country=countries$Country[countries$Year == 2019],
+           doctors=countries$`Health personnel: Physicians (number)`[countries$Year == 2019])
+
+df_2020 <- data.frame(country=countries$Country[countries$Year == 2020],
+           doctors=countries$`Health personnel: Physicians (number)`[countries$Year == 2020])
+
+joined_df <- full_join(df_2019, df_2020, by=c("country"))
+joined_df <- joined_df[rowSums(is.na(joined_df)) == 0,]
+colnames(joined_df) <- c("Country", "2019 doctors", "2020 doctors")
+
+t.test(joined_df$`2020 doctors` - joined_df$`2019 doctors`)
+```
+
+5. Perform a formal analysis of variance for the difference in 2010 log GDP per capita by world region.
+
+```{r, echo=F}
+countries_2010 <- countries[countries$Year == 2010,]
+
+summary(aov(`GDP per capita (US dollars)`~Region, countries_2010))
+```
+Let $\mu_k$ be the mean GDP per capita of countries in region $k$ (indexed arbitrarily). We want to test $H_0$: $\mu_0=\mu_1=...=\mu_k$ vs $H_a$: the means are not all equal. We get an $F$-statistic of 12.84 for 21 and 187 degrees of freedom for a p-value of less than $2\times 10^{-16}$, suggesting that the mean GDPs per capita of different regions are not equal.
+
+6. Comment on the assumptions of the test.
+
+```{r, echo=F, warning=F}
+ggplot(countries_2010, aes(x=Region, y=log10(`GDP per capita (US dollars)`))) + 
+  geom_boxplot() + 
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+tmp <- by(log(countries_2010$`GDP per capita (US dollars)`), countries_2010$Region, var, na.rm=T)
+df <- data.frame(regions=names(tmp), variances=round(as.vector(tmp), 2),
+                 counts=as.vector(table(countries_2010$Region[!is.na(countries_2010$`GDP per capita (US dollars)`)])))
+colnames(df) <- c("Region", "Variance", "Number")
+df
+```
+
+The GDPs are about symmetric, so normality is a reasonable assumption. The variances are quite different though (from 0.15 to 2.95; well beyond a 2x difference), so the equal variance assumption is violated. Independence probably does not hold either because the countries likely trade with each other, causing their GDPs to be correlated both within and between groups.
+
+
+
+
+
+
+
+
+
+
+
+

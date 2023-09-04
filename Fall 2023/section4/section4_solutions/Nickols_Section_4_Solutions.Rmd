@@ -1,0 +1,209 @@
+---
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+header-includes:
+- \usepackage{tcolorbox}
+- \usepackage{fancyhdr}
+- \usepackage[utf8]{inputenc}
+- \usepackage{wrapfig}
+- \usepackage{amsmath}
+- \usepackage{booktabs}
+- \usepackage{esvect}
+urlcolor: blue
+---
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{Will Nickols}
+\lhead{Section 4}
+\rfoot{Page \thepage}
+
+# Announcements
+
+\begin{wrapfigure}{r}{0.12\textwidth}
+  \centering
+    \vspace*{-1.3cm}
+    \includegraphics[width=\linewidth]{section_qr_code.png}
+\end{wrapfigure}
+
+Make sure to sign in on the [google form](https://forms.gle/xm1DfzuZFNcWU6fH8) (I send a list of which section questions are useful for which pset questions afterwards)
+
+Pset 3 due Friday 10/6
+
+# Introductions
+- One question or thought related to lecture last week (Inference, linear model assumptions, and intro to multiple regression)
+
+# Redundant summary information
+
+Here's some useful information:
+
+Definitions:
+
+- Sum of squares model (SSM): $\sum_{i=1}^n(\hat{Y_i}-\bar{Y})^2$
+- Sum of squares error (SSE): $\sum_{i=1}^n(Y_i-\hat{Y_i})^2$
+- Sum of squares total (SST): $\sum_{i=1}^n(Y_i-\bar{Y})^2$
+- Degrees of freedom for model with $p$ predictors and an intercept ($\textrm{df}_M$): $p$
+- Degrees of freedom for error with $p$ predictors and an intercept ($\textrm{df}_E$): $n-p-1$
+- $R^2$: $1-\textrm{SSE}/\textrm{SST}$
+- Adjusted $R^2$: $1-(1-R^2)\frac{n-1}{\textrm{df}_E}$
+
+Facts:
+
+- $\textrm{SSE} + \textrm{SSM} = \textrm{SST}$
+- $\hat{\sigma}^2=\textrm{SSE}/\textrm{df}_E$
+- Under the null (all coefficients are 0),
+$$\frac{\textrm{SSM}/\textrm{df}_M}{\textrm{SSE}/\textrm{df}_E}\sim F_{\textrm{df}_M, \textrm{df}_E}$$
+
+We'll be looking at emissions per capita regressed on log GDP per capita in 2010. For context, average emissions for countries that reported them were 5.27 metric tons of carbon dioxide per person.
+
+![Lm output with missing information](lm.png){height=2.6in}
+
+```{r, include=F}
+countries <- read.csv("data/country_stats.csv", check.names = F)
+countries_2010 <- countries[countries$Year == 2010,]
+
+# Show n
+sum(!is.na(countries_2010$`GDP per capita (US dollars)`) & !is.na(countries_2010$`Emissions per capita (metric tons of carbon dioxide)`))
+
+# Display model
+lm1 <- summary(lm(`Emissions per capita (metric tons of carbon dioxide)` ~ log2(`GDP per capita (US dollars)`), countries_2010))
+```
+
+From the partial output above, calculate the following:
+
+1. How many non-NA data points were included.
+
+$n = \textrm{df}_E + p + 1 = \textrm{df}_E + 1 + 1 = 141$
+
+2. The $t$-statistics for the intercept and `log2(GDP per capita (US dollars))` coefficient.
+
+$t = \frac{\textrm{Estimate}}{\textrm{Standard error}}$, so $t_{\beta_0}=-18.445/2.204=-8.37$ and $t_{\beta_1}=1.869/0.172=10.87$
+
+3. How you would find the p-values of the two $t$-tests for the intercept and `log2(GDP per capita (US dollars))` coefficient being 0.
+
+We want the mass that is beyond the $t$-statistic in the $t_{\textrm{df}_E}$ distribution:
+
+$$\begin{aligned}p_{\beta_0}&=2\cdot(1-F_{t_{139}}(|t_{\beta_0}|))=5.5\times 10^{-14}\\
+p_{\beta_1}&=2\cdot(1-F_{t_{139}}(|t_{\beta_1}|))=2.7\times 10^{-20}\\
+\end{aligned}$$
+
+where $F_{t_{139}}$ is the $t_{139}$ CDF.
+
+```{r, include=F}
+# Intercept
+2 * pt(abs(lm1$coefficients[1,3]), df = 139, lower.tail = F)
+
+# log GDP per capita coefficient
+2 * pt(lm1$coefficients[2,3], df = 139, lower.tail = F)
+```
+
+4. A 95\% confidence interval for the `log2(GDP per capita (US dollars))` coefficient.
+
+Letting $t^*$ be the $0.975$ quantile of the $t_{139}$ distribution,
+$$\hat{\beta_1}\pm t^*\cdot\textrm{SE}_{\hat{\beta}_1}=1.869\pm 1.977\cdot 0.172=(1.53, 2.21)$$ which doesn't include 0 as expected.
+
+```{r, include=F}
+qt(0.975, 139)
+```
+
+5. The adjusted $R^2$.
+
+$$1-(1-R^2)\frac{n-1}{\textrm{df}_E}=1-(1-0.4593)\frac{140}{139}=0.4554$$
+
+6. The sum of squares error, the sum of squares total, and the sum of squares model.
+
+$$\textrm{SSE}=\textrm{Residual standard error}^2\cdot \textrm{df}_E = 4.175^2\cdot 139=2422.857$$
+$$\textrm{SST}=\frac{\textrm{SSE}}{1-R^2}=2422.857/0.5407=4480.964$$
+$$\textrm{SSM}=\textrm{SST}-\textrm{SSE}=2058.107$$
+
+7. The $f$-statistic and p-value for the test that all coefficients are equal to 0.
+
+$$\begin{aligned}f_{\textrm{Overall}}&=\frac{\textrm{SSM}/\textrm{df}_M}{\textrm{SSE}/\textrm{df}_E}=\frac{2058.107/1}{2422.857/139}=118.1\\
+p_{\textrm{Overall}}&=1-F_{1,139}(f_{\textrm{Overall}})=2.7\times 10^{-20}
+\end{aligned}$$
+
+```{r, include=F}
+pf(lm1$fstatistic[1], 1, 139, lower.tail = F)
+```
+
+8. Note that the hypothesis tested in 7 ($H_0:\beta_1=0$ vs $H_a:\beta_1\neq0$) was the same as one of the hypotheses tested in 2. If our framework is consistent, these should give the same answer. Recall from week 2's section that if $T_n\sim t_n$, $T_n^2\sim F_{1,n}$. Show (numerically) that your calculated $t$ statistic squared is your $f$ statistic, and explain how this shows that the two tests are the same. (Note that this only works because we have a single predictor.)
+
+The two test statistics are within rounding error of each other: $t^2=10.87^2=118.2 \approx 118.1=f$. Under the null, a $t$-statistic $T_n$ of $\beta_1$ has a $t_n$ distribution, so $T_n^2$ will have an $F_{1,n}$ distribution, so with the observed $t$-statistic $t_n$ and $f=t_n^2$, 
+$$P(|t_n|\geq |T_n|)=P(t_n^2\geq T_n^2)=P(t_n^2\geq F_{1,n})=P(f\geq F_{1,n})$$
+where the first and last probabilities give our two p-values.
+
+The full linear model for the image is here:
+```{r, echo=F, cache=T}
+# Show n
+sum(!is.na(countries_2010$`GDP per capita (US dollars)`) & !is.na(countries_2010$`Emissions per capita (metric tons of carbon dioxide)`))
+
+# Display model
+summary(lm(`Emissions per capita (metric tons of carbon dioxide)` ~ log2(`GDP per capita (US dollars)`), countries_2010))
+```
+
+\newpage
+
+# Intuitive F test
+
+Performing an overall $F$ test with the sum of squares as above makes sense when deriving the $F$ test, but the sum of squares involved are cumbersome and unintuitive. Here, we'll create a more intuitive test statistic.
+
+1. Write $\textrm{SSE}$ and $\textrm{SSM}$ in terms of $\hat{\sigma}^2$, $\textrm{df}_E$, and $R^2$.
+
+$$\begin{aligned}\textrm{SSE}&=\hat{\sigma}^2\cdot \textrm{df}_E\\
+\textrm{SST}&=\frac{\textrm{SSE}}{1-R^2}\implies\textrm{SSM}=\textrm{SST}-\textrm{SSE}=\textrm{SSE}\left(\frac{1}{1-R^2}-1\right)=\hat{\sigma}^2\cdot \textrm{df}_E\cdot\frac{R^2}{1-R^2}
+\end{aligned}$$
+
+2. Use these to write the $F$-statistic only in terms of $R^2$, $\textrm{df}_E$, and $\textrm{df}_M$.
+
+$$F=\frac{\textrm{SSM}/\textrm{df}_M}{\textrm{SSE}/\textrm{df}_E}=\frac{R^2}{1-R^2}\cdot\frac{\textrm{df}_E}{\textrm{df}_M}$$
+
+3. Use this to explain how a higher or lower $R^2$, $\textrm{df}_E$, and $\textrm{df}_M$ contribute to a more or less significant $F$ test. Why do these make sense?
+
+An $R^2$ closer to 1 gives a larger $F$-statistic, holding $\textrm{df}_E$ and $\textrm{df}_M$ equal, which makes sense because the model is explaining more of the variability, so we expect the coefficients to be non-zero. When $\textrm{df}_E$ is higher (holding the other two equal), the $F$ statistic increases. When the $R^2$ is the same and $\textrm{df}_E$ is higher, the model is explaining more data points with the same number of predictors, giving us confidence that the coefficients are non-zero. When $\textrm{df}_M$ is higher (holding the other two equal), we're using more predictors to get the same explanatory power ($R^2$), so we expect that these coefficients are not that useful. This drives down the $F$-statistic, giving us a less significant result.
+
+# Regression on real data
+
+This section will deal with a data set of country-level statistics from [this source](https://www.gu.se/en/quality-government/qog-data/data-downloads/standard-dataset) with an explanation of the data encoding found [here](https://www.qogdata.pol.gu.se/data/codebook_std_jan22.pdf).
+
+1. Fit a linear model to predict the percent of individuals using the internet in a country (`wdi_internet`) from the log of its GDP per capita (`mad_gdppc`), and formally test whether this association is significant. Provide a visual to support your conclusion.
+
+We want to test $H_0:\beta_1=0$ vs $H_a:\beta_1\neq0$ where $\beta_1$ is the association between log GDP per capita and percent of individuals with access to internet in a country. We get a slope of 20.97 and a $t$-statistic of 24.7 for that slope with a p-value of less than $2.2\times 10^{-16}<\alpha=0.05$, so we reject the null and conclude there is an association between log GDP per capita and percent of individuals with access to internet in a country (go figure!).
+
+```{r, eval=F}
+library(ggplot2)
+
+lm1 <- lm(wdi_internet ~ log(mad_gdppc), countries)
+summary(lm1)
+
+ggplot(countries, aes(x=log(mad_gdppc), y=wdi_internet)) + 
+  geom_point() + 
+  geom_smooth(method='lm', formula= y~x)
+```
+
+2. Check the assumptions of the model.
+
+```{r, eval=F, fig.height=6}
+par(mfrow=c(2,2))
+plot(lm1)
+```
+
+- Linearity: The Residuals vs Fitted plot shows that there is no clear pattern to the residuals, so linearity is likely upheld.
+- Constant variance: Based on the Scale-Location plot, there might be slightly more variance in residuals for countries with GDPs near the world-wide median, but the variance is about constant. (The Residuals vs Fitted plot makes it look like there is more variance in the middle, but note that there's also more data there in the first place.)
+- Normality: The Q-Q plot show that the lower tails are slightly lower than expected with the normal assumption, but overall the normal assumption fits very well.
+- Independence: This is questionable: even given GDP, it's possible that internet use in a region is correlated because companies able to set up and maintain the infrastructure might work across multiple countries in a region.
+
+3. Uganda has a GDP per capita listed but no statistic for internet access. Provide a point estimate and 90\% prediction interval.
+
+```{r, eval=F}
+log(countries[countries$cname=="Uganda",]$mad_gdppc)
+predict(lm1, newdata=countries[countries$cname=="Uganda",], 
+        interval = c("prediction"), level = 0.90)
+```
+
+# And do confidence interval
+
+
+
+

@@ -1,0 +1,289 @@
+---
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+header-includes:
+- \usepackage{tcolorbox}
+- \usepackage{fancyhdr}
+- \usepackage[utf8]{inputenc}
+- \usepackage{wrapfig}
+- \usepackage{amsmath}
+- \usepackage{booktabs}
+- \usepackage{esvect}
+urlcolor: blue
+---
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{Will Nickols}
+\lhead{Section 1}
+\rfoot{Page \thepage}
+
+# Announcements
+
+\begin{wrapfigure}{r}{0.12\textwidth}
+  \centering
+    \vspace*{-1.3cm}
+    \includegraphics[width=\linewidth]{section_qr_code.png}
+\end{wrapfigure}
+
+Make sure to sign in on the [google form](https://forms.gle/xm1DfzuZFNcWU6fH8) (I send a list of which section questions are useful for which pset questions afterwards)
+
+Pset 0 due Friday 9/15
+
+# Introductions
+- Name
+- Year
+- Previous stats courses
+- One question or thought related to lecture last week
+
+# Goals each week
+- Hand out and explain R code for the week. New relative to last year, we'll plan to not do any in-section coding questions. LLMs are good enough now to do most of your coding for you (and they're allowed in this class!).
+- See similar examples to the homework (both in code and analysis).
+- Learn something about the world.
+
+```{r, echo=F, warning=F, message=F, cache=F}
+list.of.packages <- c("ggplot2", "gridExtra", "MASS")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+
+library(ggplot2)
+library(gridExtra)
+library(MASS)
+```
+
+# Effective sample size
+
+The following problems are intended as a review of Stat 110.
+
+1. Suppose there is a gambler who goes to the casino for $n$ days and makes $Z_1, Z_2, \dots, Z_n\sim\mathcal{N}(0, 1)$ each day where the winnings are independent of each other. (You can assume these are in thousands if the stakes aren't high enough.) What is the distribution of $\bar{Z}$?
+
+\vspace{0.5 cm}
+
+2. Now, suppose the gambler tends to win and lose in streaks. In particular, let $X_1, X_2, \dots, X_n\sim\mathcal{N}(0, 1)$ marginally be the winnings, but assume neighboring days have correlation $\rho$. That is, $$\vv{X}\sim\textrm{MVN}(\vv{0},\mathbf{\Sigma}), \mathbf{\Sigma}=
+\begin{bmatrix} 
+    1 & \rho & 0 & 0 & \dots \\
+    \rho & 1 & \rho & 0 & \dots \\
+    0 & \rho & 1 & \rho & \dots \\
+    0 & 0 & \rho & 1 & \dots \\
+    \vdots & \vdots &\vdots &\vdots &\ddots \\
+\end{bmatrix}$$ Intuitively, should the variance of $\bar{X}$ be higher or lower than the variance of $\bar{Z}$?
+    
+\vspace{1 cm}
+
+3. What is the distribution of $\bar{X}$?
+
+\vspace{6 cm}
+
+4. What would the distribution be if the $X_i$ had variance $\sigma^2$ instead of $1$ but everything else remained the same?
+
+\vspace{2 cm}
+
+5. What is the approximate distribution for large $n$?
+
+\vspace{2 cm}
+
+6. By comparing the distributions in (1) and (5), determine the effective sample size $n'$ when there are $n$ random variables with the correlation structure of (2). That is, is you had $n'$ independent Normals rather than $n$ dependent Normals, what would $n'$ have to be so that the variances of the sample means are the same?
+
+\vspace{2 cm}
+
+7. Here is a plot of how the effective sample size changes with $\rho$.
+
+```{r, echo=F, fig.width=4, fig.height=3, fig.align='center', cache=T}
+rhos <- seq(0, 0.5, 0.001)
+eff_samp_size <- function(rhos) {
+  return(1/(1 + 2 * rhos))
+}
+ggplot(data.frame(x=rhos), aes(x=x)) + 
+  geom_function(fun = eff_samp_size, colour = "black", linewidth=2) + 
+  ylim(c(0, 1)) + 
+  theme_bw() + 
+  xlab("Correlation") + 
+  ylab("n'/n")
+```
+
+We can test that our calculations are right by using a simulation. Explain what the following code does and whether the results agree with our expectations.
+
+```{r, cache=T}
+library(MASS) # For Multivariate Normal
+set.seed(139)
+
+nsim <- 10^5
+n <- 70
+p <- 0.2
+n_eff <- as.integer(n / (1 + 2 * p))
+
+Sigma = matrix(0, nrow = n, ncol = n)
+diag(Sigma) <- 1
+for (i in 2:n) {
+  Sigma[i, i-1] <- p
+  Sigma[i-1, i] <- p
+}
+
+outputs <- matrix(nrow = nsim, ncol = 3)
+for (i in 1:nsim) {
+  x <- rnorm(n, 0, 1)
+  outputs[i,1] <- mean(x)
+  
+  x <- rnorm(n_eff, 0, 1)
+  outputs[i,2] <- mean(x)
+  
+  x <- mvrnorm(n = 1, rep(0, n), Sigma)
+  outputs[i,3] <- mean(x)
+}
+
+variances_out <- apply(outputs, 2, var) # Apply over columns
+names(variances_out) <- c("Independent n", "Independent n'", "Dependent n")
+variances_out
+```
+
+\vspace{3 cm}
+
+8. You might have noticed that the plot of effective sample size versus correlation stops at a correlation of 0.5. Correlation ranges from -1 to 1, but our set-up actually doesn't work if $\rho>0.5$ and $n$ is large enough. To have a valid $\mathbf{\Sigma}$ matrix, it must satisfy the property that $\vv{x}^T\mathbf{\Sigma} \vv{x}\geq 0$ for all $\vv{x}\in\mathbb{R}^n$ (that is, it must be positive, semi-definite). Show that for $\rho>0.5$, choosing the vector $\vv{x}=(-1, 1, -1, ..., -1)^T$ implies $\vv{x}^T\mathbf{\Sigma} \vv{x}<0$ if $n$ is large enough, violating the requirements for $\mathbf{\Sigma}$. (For simplicity, let $n$ be odd.)
+
+\vspace{6 cm}
+
+\newpage
+
+# Student-$t$ vs Normal
+
+The following problems are intended as a review of Stat 111. We'll prove that the student-$t$ distribution converges to the Normal distribution as its degrees of freedom increase and then analyze this convergence. This fact is useful for large $n$ approximations.
+
+1. Let $T_n\sim t_n$, so $T_n$ can be represented as $$T_n=\frac{Z}{\sqrt{V/n}}, Z\sim\mathcal{N}(0,1), V\sim\chi^2_n$$ which also means $V$ can be represented as $V=\sum_{i=1}^n Z_i^2$ for $Z_i\sim\mathcal{N}(0,1)$. Show that $V/n\xrightarrow{p}1$.
+
+\vspace{2 cm}
+
+2. What tells us that if $V/n\xrightarrow{p} 1$, $\frac{1}{\sqrt{V/n}}\xrightarrow{p} 1$?
+
+\vspace{0.5 cm}
+
+3. What tells us that if $Z\sim\mathcal{N}(0,1)$ and $\frac{1}{\sqrt{V/n}}\xrightarrow{p} 1$, $\frac{Z}{\sqrt{V/n}}\xrightarrow{d} \mathcal{N}(0,1)$
+
+\vspace{0.5 cm}
+
+4. What does this mean about the distribution of $T_n$ as $n\rightarrow\infty$?
+
+\vspace{0.5 cm}
+
+5. Do the centers or the tails converge faster?
+
+```{r, echo=F, fig.width=6, fig.height=3, fig.align='center', cache=T}
+dfs = seq(1, 30, 0.001)
+ratios <- function(dfs, point) {
+  return((pt(point, dfs, lower.tail = F)) / pnorm(point, lower.tail = F))
+}
+ggplot(data.frame(x=dfs), aes(x=x)) + 
+  geom_function(fun = ratios, aes(color = "0"), args = list(point = 0)) +
+  geom_function(fun = ratios, aes(color = "1"), args = list(point = 1)) +
+  geom_function(fun = ratios, aes(color = "2"), args = list(point = 2)) +
+  geom_function(fun = ratios, aes(color = "2.5"), args = list(point = 2.5)) +
+  theme_bw() + 
+  scale_color_manual(values = c("0" = "black", "1" = "darkred", "2" = "red", "2.5" = "pink")) +
+  labs(color = "Tail mass beyond: ") + 
+  xlab("Degrees of freedom") + 
+  xlim(c(1,30)) + 
+  ylim(c(0,20)) + 
+  ylab("t tail mass/Normal tail mass")
+```
+
+\vspace{1 cm}
+
+6. What does this imply about generating p-values from a Normal approximation to the student-$t$ distribution?
+
+\vspace{3 cm}
+
+\newpage
+
+# Country demographics
+
+These problems will deal with a data set of country-level statistics from [UNdata](https://data.un.org/) and [Varieties of Democracy](https://v-dem.net/data/the-v-dem-dataset/).
+
+```{r, echo=F}
+# Read in the data
+countries <- read.csv("data/country_stats.csv", check.names = F)
+```
+
+1. Compare the following summary statistics for the 2010 populations (in millions of people) of Western African and Eastern African countries:
+
+```{r}
+# Western Africa
+pop1 <- countries[countries$Year == 2010 & 
+                    countries$Region == "Western Africa",
+                  ]$`Population mid-year estimates (millions)`
+round(c(summary(pop1), "SD" = sd(pop1)), 2)
+
+# Eastern Africa
+pop2 <- countries[countries$Year == 2010 & 
+                    countries$Region == "Eastern Africa",
+                  ]$`Population mid-year estimates (millions)`
+round(c(summary(pop2), "SD" = sd(pop2)), 2)
+```
+
+\vspace{3 cm}
+
+2. Compare the distributions. Would you expect to see a significant difference in a $t$-test?
+
+```{r, echo=F, fig.width=6, fig.height=3, fig.align='center', cache=T}
+country_subset <- countries[countries$Year == 2010 & 
+                              countries$Region %in% c("Western Africa", "Eastern Africa"),]
+plot1 <- ggplot(country_subset, aes(x=`Population mid-year estimates (millions)`, fill=Region)) + 
+  geom_histogram(alpha=0.4, position="identity", bins = 30) + 
+  xlab("Population (millions)") + 
+  ylab("Countries") + 
+  theme_bw() + 
+  theme(legend.position = "none")
+
+plot2 <- ggplot(country_subset, aes(x=Region,y=`Population mid-year estimates (millions)`, fill=Region)) + 
+  geom_boxplot(alpha=0.4, outlier.size = 0) + 
+  xlab("Population (millions)") + 
+  ylab("Region") + 
+  theme_bw() + 
+  geom_jitter(color="black", size=1, alpha=0.9, width = 0.1) + 
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank())
+
+grid.arrange(plot1, plot2, ncol=2, widths=c(1,1.2))
+```
+
+\vspace{2 cm}
+
+3. Perform a formal $t$-test for the difference in population means between Western African and Eastern African countries.
+
+```{r, echo=F}
+west_african <- pop1
+east_african <- pop2
+t.test(west_african, east_african)
+```
+
+\vspace{1 cm}
+
+4. Perform a formal $z$-test for the difference in the proportions of the populations that are nurses or midwives in the US versus the UK in 2010.
+
+```{r, echo=F}
+us_nurses_midwives <- countries$`Health personnel: Nurses and midwives (number)`[
+  countries$Country == "United States of America" & countries$Year ==  2010]
+us_pop <- countries$`Population mid-year estimates (millions)`[
+  countries$Country == "United States of America" & countries$Year ==  2010] * 1000000
+uk_nurses_midwives <- countries$`Health personnel: Nurses and midwives (number)`[
+  countries$Country == "United Kingdom" & countries$Year ==  2010]
+uk_pop <- countries$`Population mid-year estimates (millions)`[
+  countries$Country == "United Kingdom" & countries$Year ==  2010] * 1000000
+prop.test(c(us_nurses_midwives, uk_nurses_midwives), c(us_pop, uk_pop), correct = F)
+```
+
+\vspace{1 cm}
+
+5. Varieties of Democracy is a group of researchers that estimates a democracy score for each country each year based on a large compilation of data. Note any trends in the democracy index.
+
+```{r, echo=F, fig.width=6, fig.height=3, fig.align='center', cache=T, warning=F}
+ggplot(countries[countries$Country %in% c("United States of America",
+                                          "Russian Federation"),], aes(x=Year, y=v2x_polyarchy, color=Country)) + 
+  geom_point(size=2) + 
+  ylim(c(0,1)) + 
+  xlab("Year") + 
+  ylab("Democracy index (0-1)") + 
+  theme_bw()
+```
+
+\vspace{3 cm}

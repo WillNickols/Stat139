@@ -1,0 +1,304 @@
+---
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+header-includes:
+- \usepackage{tcolorbox}
+- \usepackage{fancyhdr}
+- \usepackage[utf8]{inputenc}
+- \usepackage{wrapfig}
+- \usepackage{amsmath}
+- \usepackage{booktabs}
+- \usepackage{esvect}
+urlcolor: blue
+---
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{Will Nickols}
+\lhead{Section 1}
+\rfoot{Page \thepage}
+
+# Announcements
+
+\begin{wrapfigure}{r}{0.12\textwidth}
+  \centering
+    \vspace*{-1.3cm}
+    \includegraphics[width=\linewidth]{section_qr_code.png}
+\end{wrapfigure}
+
+Make sure to sign in on the [google form](https://forms.gle/xm1DfzuZFNcWU6fH8) (I send a list of which section questions are useful for which pset questions afterwards)
+
+Pset 0 due Friday 9/15
+
+# Introductions
+- Name
+- Year
+- Previous stats courses
+- One question or thought related to lecture last week
+
+# Goals each week
+- Hand out and explain R code for the week. New relative to last year, we'll plan to not do any in-section coding questions. LLMs are good enough now to do most of your coding for you (and they're allowed in this class!).
+- See similar examples to the homework (both in code and analysis).
+- Learn something about the world.
+
+```{r, echo=F, warning=F, message=F, cache=F}
+list.of.packages <- c("ggplot2", "gridExtra", "MASS")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+
+library(ggplot2)
+library(gridExtra)
+library(MASS)
+```
+
+# Effective sample size
+
+The following problems are intended as a review of Stat 110.
+
+1. Suppose there is a gambler who goes to the casino for $n$ days and makes $Z_1, Z_2, \dots, Z_n\sim\mathcal{N}(0, 1)$ each day where the winnings are independent of each other. (You can assume these are in thousands if the stakes aren't high enough.) What is the distribution of $\bar{Z}$?
+$$\bar{Z}\sim \mathcal{N}(0, 1/n)$$
+2. Now, suppose the gambler tends to win and lose in streaks. In particular, let $X_1, X_2, \dots, X_n\sim\mathcal{N}(0, 1)$ marginally be the winnings, but assume neighboring days have correlation $\rho$. That is, $$\vv{X}\sim\textrm{MVN}(\vv{0},\mathbf{\Sigma}), \mathbf{\Sigma}=
+\begin{bmatrix} 
+    1 & \rho & 0 & 0 & \dots \\
+    \rho & 1 & \rho & 0 & \dots \\
+    0 & \rho & 1 & \rho & \dots \\
+    0 & 0 & \rho & 1 & \dots \\
+    \vdots & \vdots &\vdots &\vdots &\ddots \\
+\end{bmatrix}$$ Intuitively, should the variance of $\bar{X}$ be higher or lower than the variance of $\bar{Z}$?
+    
+It should be higher if $\rho$ is positive because each observation shares some information with neighboring observations and therefore contributes less new information about the mean.
+    
+3. What is the distribution of $\bar{X}$?
+
+$\bar{X}=\frac{1}{n}\sum_{i=1}^nX_i$, which is a linear combination of the multivariate Normal vector, so $\bar{X}$ is still Normal. $E(\bar{X})=0$ by linearity of expectation. 
+$$\begin{aligned}\textrm{Var}(\bar{X})&=\sum_{i=1}^n\textrm{Var}(X_i/n)+\sum_{i,j\textrm{ s.t. }i\neq j}\textrm{Cov}(X_i/n,X_j/n)\\
+&=\sum_{i=1}^n\textrm{Var}(X_i/n)+\sum_{i,j \textrm{ are neighbors}}\rho\sqrt{\textrm{Var}(X_i/n)\textrm{Var}(X_j/n)}\\
+&=\textrm{Var}(X_1)/n+\sum_{i,j \textrm{ are neighbors}}\frac{\rho}{n^2}\sqrt{\textrm{Var}(X_i)\textrm{Var}(X_j)}\\
+&=\textrm{Var}(X_1)/n+ \frac{\rho(2n - 2)}{n^2}\textrm{Var}(X_1)\end{aligned}$$
+where step 2 used the formula for correlation and step 4 used the fact that we have $2n-2$ covariance terms since all $X_i$ have two neighbors except the first and last. Thus, using $\textrm{Var}(X_1)=1$,
+$$\bar{X}\sim \mathcal{N}\left(0, \frac{n+ \rho(2n - 2)}{n^2}\right)$$
+
+4. What would the distribution be if the $X_i$ had variance $\sigma^2$ instead of $1$ but everything else remained the same?
+
+We can see that the only place we used $\textrm{Var}(X_i)$ was in the last step, so we can just plug in $\sigma^2$ instead to get
+$$\bar{X}\sim \mathcal{N}\left(0, \sigma^2\left(\frac{n+ \rho(2n - 2)}{n^2}\right)\right)$$
+
+5. What is the approximate distribution for large $n$?
+
+As $n\rightarrow\infty$, $$\frac{n+ \rho(2n - 2)}{n^2}\rightarrow \frac{n+2\rho n}{n^2}\implies \bar{X}\dot{\sim} \mathcal{N}\left(0, \frac{1 + 2\rho}{n}\right)$$
+
+6. By comparing the distributions in (1) and (5), determine the effective sample size $n'$ when there are $n$ random variables with the correlation structure of (2). That is, is you had $n'$ independent Normals rather than $n$ dependent Normals, what would $n'$ have to be so that the variances of the sample means are the same?
+
+We need $n'$ such that:
+$$\frac{1}{n'}=\frac{1 + 2\rho}{n}\implies n'=\frac{n}{1+2\rho}$$
+
+7. Here is a plot of how the effective sample size changes with $\rho$.
+
+```{r, echo=F, fig.width=4, fig.height=3, fig.align='center', cache=T}
+rhos <- seq(0, 0.5, 0.001)
+eff_samp_size <- function(rhos) {
+  return(1/(1 + 2 * rhos))
+}
+ggplot(data.frame(x=rhos), aes(x=x)) + 
+  geom_function(fun = eff_samp_size, colour = "black", linewidth=2) + 
+  ylim(c(0, 1)) + 
+  theme_bw() + 
+  xlab("Correlation") + 
+  ylab("n'/n")
+```
+
+We can test that our calculations are right by using a simulation. Explain what the following code does and whether the results agree with our expectations.
+
+```{r, cache=T}
+library(MASS) # For Multivariate Normal
+set.seed(139)
+
+nsim <- 10^5
+n <- 70
+p <- 0.2
+n_eff <- as.integer(n / (1 + 2 * p))
+
+Sigma = matrix(0, nrow = n, ncol = n)
+diag(Sigma) <- 1
+for (i in 2:n) {
+  Sigma[i, i-1] <- p
+  Sigma[i-1, i] <- p
+}
+
+outputs <- matrix(nrow = nsim, ncol = 3)
+for (i in 1:nsim) {
+  x <- rnorm(n, 0, 1)
+  outputs[i,1] <- mean(x)
+  
+  x <- rnorm(n_eff, 0, 1)
+  outputs[i,2] <- mean(x)
+  
+  x <- mvrnorm(n = 1, rep(0, n), Sigma)
+  outputs[i,3] <- mean(x)
+}
+
+variances_out <- apply(outputs, 2, var) # Apply over columns
+names(variances_out) <- c("Independent n", "Independent n'", "Dependent n")
+variances_out
+```
+This simulation is generating many draws from three scenarios: (1) $n$ independent observations, (2) $n'$ independent observations, and (3) $n$ dependent observations. For each draw, it computes the sample mean, stores it, and then finds the variance of the sample mean. As expected, the dependent $n$ sample mean variance comes out very close to the independent $n'$ sample mean variance but quite a bit higher than the independent $n$ sample mean variance.
+
+8. You might have noticed that the plot of effective sample size versus correlation stops at a correlation of 0.5. Correlation ranges from -1 to 1, but our set-up actually doesn't work if $\rho>0.5$ and $n$ is large enough. To have a valid $\mathbf{\Sigma}$ matrix, it must satisfy the property that $\vv{x}^T\mathbf{\Sigma} \vv{x}\geq 0$ for all $\vv{x}\in\mathbb{R}^n$ (that is, it must be positive, semi-definite). Show that for $\rho>0.5$, choosing the vector $\vv{x}=(-1, 1, -1, ..., -1)^T$ implies $\vv{x}^T\mathbf{\Sigma} \vv{x}<0$ if $n$ is large enough, violating the requirements for $\mathbf{\Sigma}$. (For simplicity, let $n$ be odd.)
+
+Let $\vv{x}=(-1, 1, -1, ..., -1)^T$. Then, 
+$$\mathbf{\Sigma} \vv{x}=\begin{bmatrix} 
+    -1 + \rho \\
+    1 - 2\rho\\
+    -(1 - 2\rho)\\
+    \vdots\\
+    -(1 - 2\rho)\\
+    1 - 2\rho\\
+    -1 + \rho \\
+    \end{bmatrix}\implies \vv{x}^T\mathbf{\Sigma} \vv{x}=-2(-1+\rho)+\sum_{i=2}^{n-1}(1-2\rho)$$
+
+Since $0.5<\rho<1$, $0<-2(-1+\rho)<1$ which means the first term is at most 1, but each $1-2\rho$ term is negative if $\rho>0.5$, and we can have arbitrarily many of them. Therefore, we can choose an $n$ large enough that the whole expression is negative, meaning the $\mathbf{\Sigma}$ matrix is invalid.
+
+\newpage
+
+# Student-$t$ vs Normal
+
+The following problems are intended as a review of Stat 111. We'll prove that the student-$t$ distribution converges to the Normal distribution as its degrees of freedom increase and then analyze this convergence. This fact is useful for large $n$ approximations.
+
+1. Let $T_n\sim t_n$, so $T_n$ can be represented as $$T_n=\frac{Z}{\sqrt{V/n}}, Z\sim\mathcal{N}(0,1), V\sim\chi^2_n$$ which also means $V$ can be represented as $V=\sum_{i=1}^n Z_i^2$ for $Z_i\sim\mathcal{N}(0,1)$. Show that $V/n\xrightarrow{p}1$.
+
+$E(Z_i^2)=\textrm{Var}(Z_i)+(E(Z_i))^2=1$, so by the law of large numbers, $\frac{1}{n}\sum_{i=1}^nZ_i^2\rightarrow E(Z_1^2)=1$
+
+2. What tells us that if $V/n\xrightarrow{p} 1$, $\frac{1}{\sqrt{V/n}}\xrightarrow{p} 1$?
+
+Continuous mapping theorem
+
+3. What tells us that if $Z\sim\mathcal{N}(0,1)$ and $\frac{1}{\sqrt{V/n}}\xrightarrow{p} 1$, $\frac{Z}{\sqrt{V/n}}\xrightarrow{d} \mathcal{N}(0,1)$
+
+Slutsky's Theorem
+
+4. What does this mean about the distribution of $T_n$ as $n\rightarrow\infty$?
+
+$$T_n\xrightarrow{d}\mathcal{N}(0,1)$$
+
+5. Do the centers or the tails converge faster?
+
+```{r, echo=F, fig.width=6, fig.height=3, fig.align='center', cache=T}
+dfs = seq(1, 30, 0.001)
+ratios <- function(dfs, point) {
+  return((pt(point, dfs, lower.tail = F)) / pnorm(point, lower.tail = F))
+}
+ggplot(data.frame(x=dfs), aes(x=x)) + 
+  geom_function(fun = ratios, aes(color = "0"), args = list(point = 0)) +
+  geom_function(fun = ratios, aes(color = "1"), args = list(point = 1)) +
+  geom_function(fun = ratios, aes(color = "2"), args = list(point = 2)) +
+  geom_function(fun = ratios, aes(color = "2.5"), args = list(point = 2.5)) +
+  theme_bw() + 
+  scale_color_manual(values = c("0" = "black", "1" = "darkred", "2" = "red", "2.5" = "pink")) +
+  labs(color = "Tail mass beyond: ") + 
+  xlab("Degrees of freedom") + 
+  xlim(c(1,30)) + 
+  ylim(c(0,20)) + 
+  ylab("t tail mass/Normal tail mass")
+```
+
+The centers converge much faster. The plot is showing the ratio of the student-$t$ and standard Normal distribution masses beyond a particular value. We can see that even at $n=30$, usually considered a good sample size, the mass above 2.5 in a student-$t$ distribution is about 30\% larger than the mass above 2.5 for a standard Normal.
+
+6. What does this imply about generating p-values from a Normal approximation to the student-$t$ distribution?
+
+P-values generated from test statistics near 0 will be about the same for a student-$t$ or a standard Normal distribution. However, p-values generated from large test statistics in a Normal approximation can significantly overstate the significance (be too low) relative to the student-$t$ distribution.
+
+\newpage
+
+# Country demographics
+
+These problems will deal with a data set of country-level statistics from [UNdata](https://data.un.org/) and [Varieties of Democracy](https://v-dem.net/data/the-v-dem-dataset/).
+
+```{r, echo=F}
+# Read in the data
+countries <- read.csv("data/country_stats.csv", check.names = F)
+```
+
+1. Compare the following summary statistics for the 2010 populations (in millions of people) of Western African and Eastern African countries:
+
+```{r}
+# Western Africa
+pop1 <- countries[countries$Year == 2010 & 
+                    countries$Region == "Western Africa",
+                  ]$`Population mid-year estimates (millions)`
+round(c(summary(pop1), "SD" = sd(pop1)), 2)
+
+# Eastern Africa
+pop2 <- countries[countries$Year == 2010 & 
+                    countries$Region == "Eastern Africa",
+                  ]$`Population mid-year estimates (millions)`
+round(c(summary(pop2), "SD" = sd(pop2)), 2)
+```
+
+The distributions are similar with close means, medians, minimums, and 1st quartiles. They both have considerable right skews with a means nearly double the medians, and their tails differ with Eastern African countries having a higher third quartile but lower maximum (Nigeria vs. Ethiopia).
+
+2. Compare the distributions. Would you expect to see a significant difference in a $t$-test?
+
+```{r, echo=F, fig.width=6, fig.height=3, fig.align='center', cache=T}
+country_subset <- countries[countries$Year == 2010 & 
+                              countries$Region %in% c("Western Africa", "Eastern Africa"),]
+plot1 <- ggplot(country_subset, aes(x=`Population mid-year estimates (millions)`, fill=Region)) + 
+  geom_histogram(alpha=0.4, position="identity", bins = 30) + 
+  xlab("Population (millions)") + 
+  ylab("Countries") + 
+  theme_bw() + 
+  theme(legend.position = "none")
+
+plot2 <- ggplot(country_subset, aes(x=Region,y=`Population mid-year estimates (millions)`, fill=Region)) + 
+  geom_boxplot(alpha=0.4, outlier.size = 0) + 
+  xlab("Population (millions)") + 
+  ylab("Region") + 
+  theme_bw() + 
+  geom_jitter(color="black", size=1, alpha=0.9, width = 0.1) + 
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank())
+
+grid.arrange(plot1, plot2, ncol=2, widths=c(1,1.2))
+```
+
+Probably not: The means look about the same, and the standard deviations are large enough that even dividing by the square root of the sample size still yields a standard error of the mean larger than the difference in means.
+
+3. Perform a formal $t$-test for the difference in population means between Western African and Eastern African countries.
+
+```{r, echo=F}
+west_african <- pop1
+east_african <- pop2
+t.test(west_african, east_african)
+```
+Let $\mu_0$ be the mean population of countries in Western Africa and $\mu_1$ be the mean population of countries in Eastern Africa. We are testing $H_0$: $\mu_0=\mu_1$ vs $H_a:$ the two means are different. We get a $t$-statistic of $0.12$ with $24.7$ degrees of freedom for a two-sided $t$-test, which corresponds to a p-value of $0.90>0.05$, so we fail to reject the null that there is a difference in mean populations. (The confidence interval for the differences in means is $(-20.0, 22.5)$, which includes 0, consistent with the $t$-test.)
+
+4. Perform a formal $z$-test for the difference in the proportions of the populations that are nurses or midwives in the US versus the UK in 2010.
+
+```{r, echo=F}
+us_nurses_midwives <- countries$`Health personnel: Nurses and midwives (number)`[
+  countries$Country == "United States of America" & countries$Year ==  2010]
+us_pop <- countries$`Population mid-year estimates (millions)`[
+  countries$Country == "United States of America" & countries$Year ==  2010] * 1000000
+uk_nurses_midwives <- countries$`Health personnel: Nurses and midwives (number)`[
+  countries$Country == "United Kingdom" & countries$Year ==  2010]
+uk_pop <- countries$`Population mid-year estimates (millions)`[
+  countries$Country == "United Kingdom" & countries$Year ==  2010] * 1000000
+prop.test(c(us_nurses_midwives, uk_nurses_midwives), c(us_pop, uk_pop), correct = F)
+```
+Let $p_{\textrm{US}}$ be the proportion of the population that is nurses or midwives in the US and $p_{\textrm{UK}}$ be the equivalent proportion in the UK. We want to test $H_0: p_{\textrm{US}}=p_{\textrm{UK}}$ vs. $H_a:$ they are not equal. We get a $z$-statistic of $\sqrt{57941}=240.7$ which gives a p-value less than $2.2\times10^{-16}$, so we reject the null and conclude that the proportion of the population that is nurses and midwives is significantly higher in the US.
+
+5. Varieties of Democracy is a group of researchers that estimates a democracy score for each country each year based on a large compilation of data. Note any trends in the democracy index.
+
+```{r, echo=F, fig.width=6, fig.height=3, fig.align='center', cache=T, warning=F}
+ggplot(countries[countries$Country %in% c("United States of America",
+                                          "Russian Federation"),], aes(x=Year, y=v2x_polyarchy, color=Country)) + 
+  geom_point(size=2) + 
+  ylim(c(0,1)) + 
+  xlab("Year") + 
+  ylab("Democracy index (0-1)") + 
+  theme_bw()
+```
+
+The United States' index has consistently been well above Russia's. The US index hovers around 0.85 while Russia's has consistently declined. (The gaps are because I merged these scores with the UN data which were missing a few years.)
+

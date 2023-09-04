@@ -1,0 +1,339 @@
+---
+output: pdf_document
+header-includes:
+   - \usepackage{tcolorbox}
+   - \usepackage{fancyhdr}
+   - \usepackage[utf8]{inputenc}
+---
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{Will Nickols}
+\lhead{Section 8}
+\rfoot{Page \thepage}
+
+# Announcements
+- Make sure to sign in on the [google form (linked here)](https://forms.gle/JGvZP8CPUhaefnLT6)
+- Pset 7 due November 4 at 5 pm
+- Midterm 2 November 11 through November 18
+
+# Weighted least squares regression
+
+*This question is based on an October 29th conversation with Skyler Wu.*
+
+Consider a least squares model where, rather than weighting all residuals equally, we are going to assign different weights to different residuals.  That is, we want to minimize
+
+$$\sum_{i=1}^n[w_i(Y_i-\hat{Y_i})]^2$$
+Equivalently, letting $\bf{W}$ be a diagonal matrix of weights, letting $\vec{Y}=\mathbf{X}\vec{\beta}+\vec{\epsilon}$ with $\vec{\epsilon}\sim\textrm{MVN}_n(0, \sigma^2I_n)$, and using the fact that $\hat{\vec{Y}}=\mathbf{X}\hat{\vec{\beta}}$, we want to minimize
+
+$$||\mathbf{W}(\vec{Y}-\mathbf{X}\hat{\vec\beta})||^2$$
+
+Expanding and taking the derivative gives the following:
+$$\begin{aligned}
+0&=\frac{\partial}{\partial\hat{\vec{\beta}}}((\vec{Y}-\mathbf{X}\hat{\vec\beta})^T\mathbf{W}^T\mathbf{W}(\vec{Y}-\mathbf{X}\hat{\vec\beta}))\\
+&=-2\mathbf{X}^T\mathbf{W}^T\mathbf{W}(\vec{Y}-\mathbf{X}\hat{\vec\beta})\\
+\implies \mathbf{X}^T\mathbf{W}^T\mathbf{W}\mathbf{X}\hat{\vec\beta}&=\mathbf{X}^T\mathbf{W}^T\mathbf{W}\vec{Y}\\
+\implies \hat{\vec\beta}&=(\mathbf{X}^T\mathbf{W}^T\mathbf{W}\mathbf{X})^{-1}\mathbf{X}^T\mathbf{W}^T\mathbf{W}\vec{Y}
+\end{aligned}$$
+
+This is our new weighted least-squares regression $\hat{\vec\beta}$, which we will be studying in this problem.
+
+Here are a few facts that will be useful here and on the homework:
+
+- For matrices $\mathbf{A}, \mathbf{B},$ and $\mathbf{C}$, of allowable dimensions, $\bf A(B+C)=AB+AC$
+- If $\mathbf{A}$ is of full column rank, $\mathbf{A}^T\mathbf{A}$ is symmetric and invertible
+- If $\mathbf{A}$ is symmetric, and $\mathbf{B}$ is of allowable dimensions, $\mathbf{B}^T\mathbf{A}\mathbf{B}$ is symmetric
+- For an invertible and symmetric matrix $\mathbf{A}$, $\mathbf{A}^{-1}=(\mathbf{A}^{-1})^T$
+- For $\vec{Y}=\vec{c}+\mathbf{B}\vec{X}$ with $\vec{c}$ and $\mathbf{B}$ constant and $\vec{X}$ random, $E(\vec{Y})=\vec{c}+\mathbf{B}E(\vec{X})$
+- $\textrm{Cov}(\vec{X})$ is an $n \times n$ matrix whose ${i,j}$ entry is $\textrm{Cov}(X_i,X_j)$
+- For $\vec{Y}=\vec{c}+\mathbf{B}\vec{X}$ with $\vec{c}$ and $\mathbf{B}$ constant and $\vec{X}$ random, $\textrm{Cov}(\vec{Y})=\mathbf{B}\textrm{Cov}(\vec{X})\mathbf{B}^T$
+
+1. Verify that using the usual weights for least squares regression, this formula reduces to the usual estimator for $\hat{\vec\beta}$.
+
+In our usual least squares regression, $\mathbf{W}=\mathbf{I}$, so 
+
+$$\hat{\vec\beta}=(\mathbf{X}^T\mathbf{I}^T\mathbf{I}\mathbf{X})^{-1}\mathbf{X}^T\mathbf{I}^T\mathbf{I}\vec{Y}=(\mathbf{X}^T\mathbf{X})^{-1}\mathbf{X}^T\vec{Y}$$
+as expected.
+
+2. Find the bias of $\hat{\vec\beta}$ for $\vec{\beta}$.
+
+$$\begin{aligned}
+E(\hat{\vec\beta})-\vec{\beta}&=E\left[(\mathbf{X}^T\mathbf{W}^T\mathbf{W}\mathbf{X})^{-1}\mathbf{X}^T\mathbf{W}^T\mathbf{W}\vec{Y}\right]-\vec{\beta}\\
+&=(\mathbf{X}^T\mathbf{W}^T\mathbf{W}\mathbf{X})^{-1}\mathbf{X}^T\mathbf{W}^T\mathbf{W}E\left[\vec{Y}\right]-\vec{\beta}\\
+&=(\mathbf{X}^T\mathbf{W}^T\mathbf{W}\mathbf{X})^{-1}\mathbf{X}^T\mathbf{W}^T\mathbf{W}\mathbf{X}\vec{\beta}-\vec{\beta}\\
+&=\vec{0}
+\end{aligned}$$
+
+3. Find the variance-covariance matrix of $\hat{\vec\beta}$ in matrix form.  When will this equal the variance-covariance matrix of $\hat{\vec\beta}$ in OLS regression?
+
+$$\begin{aligned}
+\textrm{Cov}(\hat{\vec\beta})&=\textrm{Cov}\left[(\mathbf{X}^T\mathbf{W}^T\mathbf{W}\mathbf{X})^{-1}\mathbf{X}^T\mathbf{W}^T\mathbf{W}\vec{Y}\right]\\
+&=\left[(\mathbf{X}^T\mathbf{W}^T\mathbf{W}\mathbf{X})^{-1}\mathbf{X}^T\mathbf{W}^T\mathbf{W}\right]\textrm{Cov}\left(\vec{Y}\right)\left[(\mathbf{X}^T\mathbf{W}^T\mathbf{W}\mathbf{X})^{-1}\mathbf{X}^T\mathbf{W}^T\mathbf{W}\right]^T\\
+&=\left[(\mathbf{X}^T\mathbf{W}^T\mathbf{W}\mathbf{X})^{-1}\mathbf{X}^T\mathbf{W}^T\mathbf{W}\right]\textrm{Cov}\left(\vec{\epsilon}\right)\left[(\mathbf{X}^T\mathbf{W}^T\mathbf{W}\mathbf{X})^{-1}\mathbf{X}^T\mathbf{W}^T\mathbf{W}\right]^T\\
+&=\sigma^2\left[(\mathbf{X}^T\mathbf{W}^T\mathbf{W}\mathbf{X})^{-1}\mathbf{X}^T\mathbf{W}^T\mathbf{W}\right]\mathbf{I}\left[(\mathbf{X}^T\mathbf{W}^T\mathbf{W}\mathbf{X})^{-1}\mathbf{X}^T\mathbf{W}^T\mathbf{W}\right]^T\\
+&=\sigma^2(\mathbf{X}^T\mathbf{W}^T\mathbf{W}\mathbf{X})^{-1}\mathbf{X}^T\mathbf{W}^T\mathbf{W}\mathbf{W}^T\mathbf{W}\mathbf{X}(\mathbf{X}^T\mathbf{W}^T\mathbf{W}\mathbf{X})^{-1}\\
+\end{aligned}$$
+
+This is equal to the normal variance-covariance matrix when $\mathbf{W}^T\mathbf{W}=I$, which gives $\sigma^2(\mathbf{X}^T\mathbf{X})^{-1}$.  In principle, any orthogonal $\mathbf{W}$ would work, but we have defined $\mathbf{W}$ to be a diagonal matrix, so all the entries must be 1 or -1.  Note that -1 is not an issue because we square the weights, so really we're just back to our ordinary least squares regression.
+
+
+# Ridge, LASSO, optimizing $\lambda$, and $\beta$ trajectories
+
+This question will deal with a data set of country-level statistics from [this source](https://www.gu.se/en/quality-government/qog-data/data-downloads/standard-dataset) with an explanation of the data encoding found [here](https://www.qogdata.pol.gu.se/data/codebook_std_jan22.pdf).  
+
+A few useful columns:
+
+- `spi_ospi`: Overall social progress index on 0-100 scale
+- `mad_gdppc`: GDP per capita
+- `wdi_internet`: Percent of population using the internet
+- `wdi_birth`: Birth rate per 1000 people
+- `wdi_chexppgdp`: Current health expenditures as percent of GDP
+- `wdi_elerenew`: Percent of total electricity output that's renewable
+- `wdi_lifexp`: Life expectancy at birth
+- `wdi_wip`: Proportion of seats held by women in national parliaments
+- `wdi_popurb`: Percentage of total population that is urban
+- `wdi_imig`: Proportion of people born outside the country in which they live
+
+```{r, cache=T, include=F}
+countries <- read.csv("data/countries.csv")
+
+# All coefficients of interest
+lm1 <- lm(spi_ospi ~ (mad_gdppc + wdi_internet + wdi_birth + wdi_chexppgdp + 
+                        wdi_elerenew + wdi_lifexp + wdi_wip + wdi_popurb + wdi_imig)^2, countries)
+
+summary(lm1)
+```
+
+1. Find a well-tuned Ridge regression model via \texttt{cv.glmnet} for predicting `spi_ospi`: consider all main predictors above and all 2-way interactions of these predictors.
+
+```{r, cache=F, warning=F}
+library(glmnet)
+set.seed(139)
+
+# Variables to be used
+columns <- c("mad_gdppc", "wdi_internet", "wdi_birth", "wdi_chexppgdp", 
+             "wdi_elerenew", "wdi_lifexp", "wdi_wip", "wdi_popurb", "wdi_imig")
+
+# Model matrix for glmnet
+X = model.matrix(spi_ospi ~ (mad_gdppc + wdi_internet + wdi_birth + wdi_chexppgdp + 
+                               wdi_elerenew + wdi_lifexp + wdi_wip + wdi_popurb + 
+                               wdi_imig)^2, countries)[,-1] # Drop the intercept
+
+# Scaling X is usually a good idea when penalizing betas
+X <- scale(X)
+
+# Run cross validation
+ridges=cv.glmnet(X, unlist(lm1$model["spi_ospi"]), alpha=0, lambda = exp(seq(-10,10,0.1)))
+
+print(ridges)
+```
+The best ridge regression model is one with a $\lambda$ of 4.48.
+
+2. Plot the average MSE on the validation sets against the $\lambda$'s you considered in the previous part.  Report the best $\lambda$ and justify this choice using this plot.
+
+```{r, cache=F}
+plot(ridges)
+```
+
+The best $\lambda$ is 4.48, which corresponds to $\textrm{log}(4.55)=1.50$ in the plot.  Values of $\lambda$ slightly above this might also help in preventing overfitting.
+
+3. Provide the $\hat{\beta}$ trajectory plot of the main effects from this model (plot each $\beta_j$ as a function of $\lambda$ as a line, and do this for all 11 main effects).  Interpret what you see in 2-3 sentences.
+
+```{r, cache=F}
+# Fit for many lambdas
+ridges_for_plot=glmnet(X, unlist(lm1$model["spi_ospi"]), alpha=0, lambda=exp(seq(-10,10,0.1)))
+
+# Plot trajectories
+matplot(log(ridges_for_plot$lambda),
+        t(ridges_for_plot$beta[-grep(":", rownames(ridges_for_plot$beta)),]), # Remove interactions
+        type="l",
+        xlab = "log(lambda)", 
+        ylab = "betas")
+```
+We can see that the estimates vary a lot for low values of $\lambda$, but coefficients shrink to zero asymptotically.  However, as $\lambda$ grows, the $\hat\beta$s never reach zero exactly as expected in ridge regression.
+
+4. Fit a well-tuned LASSO regression model: examine main effects of predictors and all their 2-way interactions.
+
+```{r, cache=F}
+# Run cross validation
+lassos=cv.glmnet(X, unlist(lm1$model["spi_ospi"]), alpha=1, lambda = exp(seq(-10,10,0.1)))
+
+print(lassos)
+```
+
+5. Plot the average MSE on the validation sets against the $\lambda$'s you considered in the previous part.  Report the best $\lambda$ and justify this choice using this plot.
+
+```{r, cache=F}
+plot(lassos)
+```
+The best $\lambda$ is 0.100, which corresponds to $\textrm{log}(0.100)=-2.302$ in the plot.  Values of $\lambda$ slightly above this might also help in preventing overfitting.
+
+6. Provide the $\hat{\beta}$ trajectory plot of the main effects from this LASSO model (plot each $\beta_j$ as a function of $\lambda$ as a line, and do this for all 11 main effects).  Compare this to the ridge trajectories.
+
+```{r, cache=F}
+lasso_for_plot = glmnet(X, unlist(lm1$model["spi_ospi"]), alpha=1, lambda=exp(seq(-10,10,0.1)))
+matplot(log(lasso_for_plot$lambda),
+        t(lasso_for_plot$beta[-grep(":", rownames(lasso_for_plot$beta)),]), # Remove interactions
+        type="l", 
+        xlab = "log(lambda)", 
+        ylab = "betas")
+```
+The estimates vary a lot for low values of $\lambda$, and they even increase in magnitude occasionally, indicating collinearity.  Note that occasionally the coefficients actually are 0 but then become non-zero.  However, as $\lambda$ grows, generally more and more snap to 0.  Compared to ridge regression, these coefficients decrease more sporadically but actually become 0 rather than just approaching 0.
+
+7. Choose a best regularized/penalized regression model and briefly justify your choice.
+
+```{r}
+data.frame(ridge=min(ridges$cvm), lasso=min(lassos$cvm))
+```
+These are the minimum means of cross validated error (the cross validated MSE using the optimal $\lambda$).  LASSO has a slightly lower MSE on cross-validation, so LASSO with a $\lambda$ of 0.100 is the best regularized model.
+
+# Penalization functions
+
+Recall that for both Ridge and LASSO, we are trying to minimize something of the form:
+
+$$\sum_{i=1}^n(Y_i-\hat{Y_i})^2+p(\hat{\vec{\beta}})$$
+
+State whether the following functions could or couldn't be used as penalization functions for $\hat{\vec{\beta}}$.  If so, provide a context in which this might be a useful penalization function; if not, explain why it would give undesired behavior.
+
+1. $p(\hat{\vec{\beta}})=\sum_{i=1}^k\hat{\beta_i}$
+
+No: the $\hat\beta_i$ would just get more and more negative.
+
+2. $p(\hat{\vec{\beta}})=\sum_{i=1}^k\hat{\beta_i}^4$
+
+Yes: you could use this if you wanted to very strongly penalize $\hat\beta$s with large magnitudes.
+
+3. $p(\hat{\vec{\beta}})=\sum_{i=1}^k\log(\hat{\beta_i})$
+
+No: negative $\hat{\beta_i}$ would break this.
+
+4. $p(\hat{\vec{\beta}})=\sum_{i=1}^k\log(|\hat{\beta_i}|)$
+
+No: the $\hat{\beta_i}$ would always go to 0 since that would give $-\infty$ loss.
+
+5. $p(\hat{\vec{\beta}})=\sum_{i=1}^k1/|\hat{\beta_i}|$
+
+No: larger $\hat{\beta}$s give a smaller loss.
+
+6. $p(\hat{\vec{\beta}})=-\sum_{i=1}^k1/|\hat{\beta_i}|$
+
+Still no: the $\hat{\beta_i}$ would always go to 0 since that would give $-\infty$ loss.
+
+7. What general requirements do we need for a penalization function?
+
+The loss should increase (or remain 0) with coefficients of increasing magnitude, and it should have a finite (preferably global) minimum.
+
+8. Write a valid penalization function that we haven't studied before.
+
+One example would be $$p(\hat{\vec{\beta}})=\sum_{i=1}^kf(\hat\beta_i)\textrm{ with } f(\hat\beta_i)=\begin{cases} 
+      0 & |\hat\beta_i|\leq \delta \\
+      |\hat\beta_i| & \textrm{Otherwise} \\
+   \end{cases}$$
+for some $\delta$, which applies no penalty once a $\hat\beta_i$ is within $\delta$ of 0.
+
+# Miscellaneous
+
+1. For what $\lambda$s would LASSO and Ridge give the same model?
+
+$\lambda=0,\infty$ since there would be either no penalization or the model would just be $\bar{Y}$.
+
+2. Below are four $\hat\beta$ trajectory plots.  Each comes from a data set with 50 data points.  One trajectory comes from data with no built-in correlation between the predictors; one comes from data with moderate and equal correlation among all the predictors; one comes from data with moderate random (but fixed) correlation among the predictors; and one is fake (and impossible).  Determine which is which.
+
+```{r, include=F, cache=F}
+par(oma = c(0,0,0,0), mar=c(1,2,1,1))
+library(MASS)
+library(glmnet)
+set.seed(139)
+
+n <- 50
+X <- matrix(rnorm(n * 8, 0, 1), ncol = 8)
+y <- X %*% c(1, 2, 2, 3, 4, 0, 0, 0)
+
+ridges_for_plot=glmnet(X, y, alpha=0, lambda=exp(seq(-3,10,0.1)))
+
+# Plot trajectories
+matplot(log(ridges_for_plot$lambda),
+        t(ridges_for_plot$beta),type="l", # Remove interactions
+        xlab = "log(lambda)", 
+        ylab = "betas")
+
+plot1 <- recordPlot()
+plot.new() ## clean up device
+
+Sigma <- matrix(0.7, nrow = 8, ncol = 8)
+diag(Sigma) <- 1
+X <- mvrnorm(n = n, c(1:5, 0, 0, 0), Sigma)
+y <- X %*% c(1, 2, 2, 3, 4, 0, 0, 0)
+
+ridges_for_plot=glmnet(X, y, alpha=0, lambda=exp(seq(-3,10,0.1)))
+
+# Plot trajectories
+matplot(log(ridges_for_plot$lambda),
+        t(ridges_for_plot$beta),type="l", # Remove interactions
+        xlab = "log(lambda)", 
+        ylab = "betas")
+
+plot2 <- recordPlot()
+plot.new() ## clean up device
+
+Sigma <- matrix(runif(64, 0, 0.5), nrow = 8, ncol = 8)
+diag(Sigma) <- 1
+Sigma[lower.tri(Sigma)] = t(Sigma)[lower.tri(Sigma)]
+X <- mvrnorm(n = n, c(1:5, 0, 0, 0), Sigma)
+y <- X %*% c(1, 2, 2, 3, 4, 0, 0, 0)
+
+ridges_for_plot=glmnet(X, y, alpha=0, lambda=exp(seq(-3,10,0.1)))
+
+
+# Plot trajectories
+matplot(log(ridges_for_plot$lambda),
+        t(ridges_for_plot$beta),type="l", # Remove interactions
+        xlab = "log(lambda)", 
+        ylab = "betas")
+
+plot3 <- recordPlot()
+plot.new() ## clean up device
+
+Sigma <- matrix(runif(64, 0, 0.5), nrow = 8, ncol = 8)
+diag(Sigma) <- 1
+Sigma[lower.tri(Sigma)] = t(Sigma)[lower.tri(Sigma)]
+X <- mvrnorm(n = n, c(1:5, 0, 0, 0), Sigma)
+y <- X %*% c(1, 2, 2, 3, 4, 0, 0, 0)
+
+ridges_for_plot=glmnet(X, y, alpha=0, lambda=exp(seq(-3,10,0.1)))
+
+
+# Plot trajectories
+matplot(log(ridges_for_plot$lambda),
+        t(ridges_for_plot$beta) + matrix(c(rep(0, dim(ridges_for_plot$beta)[2] - 
+                                                   length(seq(-5,2,0.07))), dnorm(seq(-5,2,0.07))), 
+                                         ncol = 8, 
+                                           nrow = dim(ridges_for_plot$beta)[2]) * 1.5,
+        type="l", # Remove interactions
+        xlab = "log(lambda)", 
+        ylab = "betas")
+
+plot4 <- recordPlot()
+plot.new() ## clean up device
+
+saveRDS(plot3, "plot1.RDS")
+saveRDS(plot1, "plot2.RDS")
+saveRDS(plot4, "plot3.RDS")
+saveRDS(plot2, "plot4.RDS")
+```
+
+```{r, cache=F, fig.width=8, fig.height=8, echo=F, warning=F}
+library(ggpubr)
+library(grid)
+plot1 <- readRDS(file = "plot1.RDS")
+plot2 <- readRDS(file = "plot2.RDS")
+plot3 <- readRDS(file = "plot3.RDS")
+plot4 <- readRDS(file = "plot4.RDS")
+figure <- ggarrange(plotlist = list(plot1, plot2, plot3, plot4), nrow = 2, ncol = 2)+
+  theme(plot.margin = margin(1,1,1,1, "cm"))
+annotate_figure(figure, left = textGrob("log(lambda)", rot = 90, vjust = 1, gp = gpar(cex = 1.3)),
+                  bottom = textGrob("betas", gp = gpar(cex = 1.3)))
+
+```
+The first plot is the random correlation as seen by its peaks rising and falling more sporadically.  The second is the no correlation plot because the slopes mostly fall independently of each other.  The third is impossible because all the slopes rise at the beginning (but at least one must fall for the other to rise).  The fourth is the strong correlation as seen by the fact that all the slopes are about the same after $\lambda=e^4$.
+

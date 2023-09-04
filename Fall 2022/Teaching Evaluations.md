@@ -7,7 +7,7 @@
 | Evaluate your Section Leader overall.                                              | 25    | 96\%       | 0\%        | 0\%   | 4\%   | 0\%             | 4.88            | 4.75             | 4.61          |
 | Gives effective lectures or presentations                                          | 23    | 100\%      | 0\%        | 0\%   | 0\%   | 0\%             | 5.00            | 4.75             | 4.54          |
 | Facilitates discussion and encourages participation                                | 24    | 88\%       | 8\%        | 0\%   | 0\%   | 4\%             | 4.75            | 4.73             | 4.56          |
-| Is accessible outside of class (including after class, office hours, e-mail, etc.) | 24    | 100\%      | 0\%        | 0\%   | 0\%   | 0\%             | 4.00            | 4.74             | 4.64          |
+| Is accessible outside of class (including after class, office hours, e-mail, etc.) | 24    | 100\%      | 0\%        | 0\%   | 0\%   | 0\%             | 5.00            | 4.74             | 4.64          |
 | Generates enthusiasm for the subject matter                                        | 25    | 92\%       | 4\%        | 0\%   | 0\%   | 4\%             | 4.80            | 4.68             | 4.54          |
 | Gives useful feedback on assignments                                               | 25    | 96\%       | 0\%        | 0\%   | 0\%   | 4\%             | 4.84            | 4.72             | 4.54          |
 | Returns assignments in a timely fashion                                            | 24    | 96\%       | 4\%        | 0\%   | 0\%   | 0\%             | 4.96            | 4.75             | 4.56          |

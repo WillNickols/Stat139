@@ -35,7 +35,7 @@ Pset 3 due Friday 10/6
 # Introductions
 - One question or thought related to lecture last week (Inference, linear model assumptions, and intro to multiple regression)
 
-# Redundant summary information
+# Filling in the lm table
 
 Here's some useful information:
 
@@ -44,8 +44,8 @@ Definitions:
 - Sum of squares model (SSM): $\sum_{i=1}^n(\hat{Y_i}-\bar{Y})^2$
 - Sum of squares error (SSE): $\sum_{i=1}^n(Y_i-\hat{Y_i})^2$
 - Sum of squares total (SST): $\sum_{i=1}^n(Y_i-\bar{Y})^2$
-- Degrees of freedom for model with $p$ predictors and an intercept ($\textrm{df}_M$): $p$
-- Degrees of freedom for error with $p$ predictors and an intercept ($\textrm{df}_E$): $n-p-1$
+- Degrees of freedom for the model with $p$ predictors and an intercept ($\textrm{df}_M$): $p$
+- Degrees of freedom for the error with $p$ predictors and an intercept ($\textrm{df}_E$): $n-p-1$
 - $R^2$: $1-\textrm{SSE}/\textrm{SST}$
 - Adjusted $R^2$: $1-(1-R^2)\frac{n-1}{\textrm{df}_E}$
 
@@ -77,11 +77,12 @@ From the partial output above, calculate the following:
 
 $n = \textrm{df}_E + p + 1 = \textrm{df}_E + 1 + 1 = 141$
 
-2. The $t$-statistics for the intercept and `log2(GDP per capita (US dollars))` coefficient.
+2. The $t$-statistics for the intercept and the `log2(GDP per capita (US dollars))` coefficient.
 
-$t = \frac{\textrm{Estimate}}{\textrm{Standard error}}$, so $t_{\beta_0}=-18.445/2.204=-8.37$ and $t_{\beta_1}=1.869/0.172=10.87$
+$$\begin{aligned}t = \frac{\textrm{Estimate}}{\textrm{Standard error}}\implies t_{\beta_0}&=-18.445/2.204=-8.37\\
+t_{\beta_1}&=1.869/0.172=10.87\end{aligned}$$
 
-3. How you would find the p-values of the two $t$-tests for the intercept and `log2(GDP per capita (US dollars))` coefficient being 0.
+3. How you would find the p-values of the two $t$-tests for the intercept and the `log2(GDP per capita (US dollars))` coefficient being 0.
 
 We want the mass that is beyond the $t$-statistic in the $t_{\textrm{df}_E}$ distribution:
 
@@ -130,14 +131,14 @@ pf(lm1$fstatistic[1], 1, 139, lower.tail = F)
 
 8. Note that the hypothesis tested in 7 ($H_0:\beta_1=0$ vs $H_a:\beta_1\neq0$) was the same as one of the hypotheses tested in 2. If our framework is consistent, these should give the same answer. Recall from week 2's section that if $T_n\sim t_n$, $T_n^2\sim F_{1,n}$. Show (numerically) that your calculated $t$ statistic squared is your $f$ statistic, and explain how this shows that the two tests are the same. (Note that this only works because we have a single predictor.)
 
-The two test statistics are within rounding error of each other: $t^2=10.87^2=118.2 \approx 118.1=f$. Under the null, a $t$-statistic $T_n$ of $\beta_1$ has a $t_n$ distribution, so $T_n^2$ will have an $F_{1,n}$ distribution, so with the observed $t$-statistic $t_n$ and $f=t_n^2$, 
+The two test statistics are within rounding error of each other: $t^2=10.87^2=118.2 \approx 118.1=f$. Under the null, a $t$-statistic $T_n$ of $\beta_1$ has a $t_n$ distribution, so $T_n^2$ will have an $F_{1,n}$ distribution. Therefore, with the observed $t$-statistic $t_n$ and $f=t_n^2$, 
 $$P(|t_n|\geq |T_n|)=P(t_n^2\geq T_n^2)=P(t_n^2\geq F_{1,n})=P(f\geq F_{1,n})$$
 where the first and last probabilities give our two p-values.
 
 The full linear model for the image is here:
 ```{r, echo=F, cache=T}
 # Show n
-sum(!is.na(countries_2010$`GDP per capita (US dollars)`) & !is.na(countries_2010$`Emissions per capita (metric tons of carbon dioxide)`))
+# sum(!is.na(countries_2010$`GDP per capita (US dollars)`) & !is.na(countries_2010$`Emissions per capita (metric tons of carbon dioxide)`))
 
 # Display model
 summary(lm(`Emissions per capita (metric tons of carbon dioxide)` ~ log2(`GDP per capita (US dollars)`), countries_2010))
@@ -161,49 +162,58 @@ $$F=\frac{\textrm{SSM}/\textrm{df}_M}{\textrm{SSE}/\textrm{df}_E}=\frac{R^2}{1-R
 
 3. Use this to explain how a higher or lower $R^2$, $\textrm{df}_E$, and $\textrm{df}_M$ contribute to a more or less significant $F$ test. Why do these make sense?
 
-An $R^2$ closer to 1 gives a larger $F$-statistic, holding $\textrm{df}_E$ and $\textrm{df}_M$ equal, which makes sense because the model is explaining more of the variability, so we expect the coefficients to be non-zero. When $\textrm{df}_E$ is higher (holding the other two equal), the $F$ statistic increases. When the $R^2$ is the same and $\textrm{df}_E$ is higher, the model is explaining more data points with the same number of predictors, giving us confidence that the coefficients are non-zero. When $\textrm{df}_M$ is higher (holding the other two equal), we're using more predictors to get the same explanatory power ($R^2$), so we expect that these coefficients are not that useful. This drives down the $F$-statistic, giving us a less significant result.
+- Holding $\textrm{df}_E$ and $\textrm{df}_M$ equal, an $R^2$ closer to 1 gives a larger $F$-statistic, which makes sense because the model is explaining more of the variability, so we expect the coefficients to be non-zero.
+- When $\textrm{df}_E$ is higher (holding the other two equal), the $F$ statistic increases. When the $R^2$ is the same and $\textrm{df}_E$ is higher, the model is explaining more data points with the same number of predictors, giving us confidence that the coefficients are non-zero.
+- When $\textrm{df}_M$ is higher (holding the other two equal), we're using more predictors to get the same explanatory power ($R^2$), so we expect that these coefficients are not that useful. This drives down the $F$-statistic, giving us a less significant result.
+
+\newpage
 
 # Regression on real data
 
-This section will deal with a data set of country-level statistics from [this source](https://www.gu.se/en/quality-government/qog-data/data-downloads/standard-dataset) with an explanation of the data encoding found [here](https://www.qogdata.pol.gu.se/data/codebook_std_jan22.pdf).
+These problems will deal with a dataset of country-level statistics from [UNdata](https://data.un.org/) and [Varieties of Democracy](https://v-dem.net/data/the-v-dem-dataset/).
 
-1. Fit a linear model to predict the percent of individuals using the internet in a country (`wdi_internet`) from the log of its GDP per capita (`mad_gdppc`), and formally test whether this association is significant. Provide a visual to support your conclusion.
+1. Using this linear model regressing log emissions per capita on log energy per capita and the log of the number of tourists, interpret the results:
 
-We want to test $H_0:\beta_1=0$ vs $H_a:\beta_1\neq0$ where $\beta_1$ is the association between log GDP per capita and percent of individuals with access to internet in a country. We get a slope of 20.97 and a $t$-statistic of 24.7 for that slope with a p-value of less than $2.2\times 10^{-16}<\alpha=0.05$, so we reject the null and conclude there is an association between log GDP per capita and percent of individuals with access to internet in a country (go figure!).
+```{r, echo=F}
+lm1 <- lm(log2(`Emissions per capita (metric tons of carbon dioxide)`) ~ log2(`Supply per capita (gigajoules)`) + 
+            log2(`Tourist/visitor arrivals (thousands)`), 
+          countries_2010[countries_2010$`Emissions per capita (metric tons of carbon dioxide)` > 0,])
 
-```{r, eval=F}
-library(ggplot2)
-
-lm1 <- lm(wdi_internet ~ log(mad_gdppc), countries)
 summary(lm1)
-
-ggplot(countries, aes(x=log(mad_gdppc), y=wdi_internet)) + 
-  geom_point() + 
-  geom_smooth(method='lm', formula= y~x)
 ```
+
+Holding the number of tourists constant, a doubling in energy supply per capita (a 1 point change on the log2 scale) is associated with a $2^{1.116}=2.17\times$ increase in emissions. Holding the energy supply constant, a doubling in tourist arrivals is associated with a $1.07\times$ increase in emissions.
 
 2. Check the assumptions of the model.
 
-```{r, eval=F, fig.height=6}
+```{r, echo=F, fig.width=7.5, fig.height=7, fig.align='center', cache=T, warning=F}
 par(mfrow=c(2,2))
 plot(lm1)
 ```
 
 - Linearity: The Residuals vs Fitted plot shows that there is no clear pattern to the residuals, so linearity is likely upheld.
-- Constant variance: Based on the Scale-Location plot, there might be slightly more variance in residuals for countries with GDPs near the world-wide median, but the variance is about constant. (The Residuals vs Fitted plot makes it look like there is more variance in the middle, but note that there's also more data there in the first place.)
-- Normality: The Q-Q plot show that the lower tails are slightly lower than expected with the normal assumption, but overall the normal assumption fits very well.
-- Independence: This is questionable: even given GDP, it's possible that internet use in a region is correlated because companies able to set up and maintain the infrastructure might work across multiple countries in a region.
+- Constant variance: Based on the Scale-Location plot, the residuals are about equal over the fitted values.
+- Normality: The Q-Q plot show that the lower tail is larger than expected. The emissions are possibly left skewed because a few countries had already started cutting emissions at this point.
+- Independence: This might not be true: countries that had entered into emissions cutting deals by 2010 probably influenced each others' emissions.
 
-3. Uganda has a GDP per capita listed but no statistic for internet access. Provide a point estimate and 90\% prediction interval.
+3. Uganda has tourism and energy usage data but no emissions data. The following are a 90\% confidence interval and a 90\% prediction interval for Uganda's log emissions from this data. Identify which is which, and interpret them.
 
-```{r, eval=F}
-log(countries[countries$cname=="Uganda",]$mad_gdppc)
-predict(lm1, newdata=countries[countries$cname=="Uganda",], 
-        interval = c("prediction"), level = 0.90)
+```{r, echo=F}
+round(predict(lm1, newdata=countries_2010[countries_2010$Country=="Uganda",], 
+        interval = c("confidence"), level = 0.90), 3)
+round(predict(lm1, newdata=countries_2010[countries_2010$Country=="Uganda",], 
+        interval = c("prediction"), level = 0.90), 3)
 ```
 
-# And do confidence interval
+The first is the confidence interval because it is narrower; it can be interpreted as an interval for the mean log emissions of countries with energy usage and tourism like Uganda. The second is the prediction interval because it is wider; it can be interpreted as an interval for Uganda's log emissions (or a country with the same energy usage and tourism as Uganda). 
 
+4. What we actually care about is Uganda's emissions, not its log emissions. We can exponentiate one of the intervals above to get a valid interval on the original scale, but exponentiating the other would not be valid. Which is which and why?
 
+We cannot exponentiate the confidence interval because that would violate Jensen's inequality:
+$$0.95=P(A\leq E(\log(Y)|X=x)\leq B)=P(e^A\leq \exp(E(\log(Y)|X=x))\leq e^B)\neq P(e^A\leq E(Y|X=x)\leq e^B)$$
 
+However, we can exponentiate the prediction interval:
+$$0.95=P(A\leq \log(Y)\leq B|X=x)=P(e^A\leq Y\leq e^B|X=x)$$
+
+This exponentiated prediction interval is $0.26$ to $1.63$ metric tons of carbon dioxide per person in Uganda. For reference, the United States' 2010 emissions per capita were 17.3 metric tons of carbon dioxide per person.
 

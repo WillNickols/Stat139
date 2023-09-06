@@ -1,0 +1,256 @@
+---
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+header-includes:
+- \usepackage{tcolorbox}
+- \usepackage{fancyhdr}
+- \usepackage[utf8]{inputenc}
+- \usepackage{wrapfig}
+- \usepackage{amsmath}
+- \usepackage{booktabs}
+- \usepackage{esvect}
+urlcolor: blue
+---
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{Will Nickols}
+\lhead{Section 5}
+\rfoot{Page \thepage}
+
+# Announcements
+
+\begin{wrapfigure}{r}{0.12\textwidth}
+  \centering
+    \vspace*{-1.3cm}
+    \includegraphics[width=\linewidth]{section_qr_code.png}
+\end{wrapfigure}
+
+Make sure to sign in on the [google form](https://forms.gle/xm1DfzuZFNcWU6fH8) (I send a list of which section questions are useful for which pset questions afterwards)
+
+Pset 4 due Friday 10/13
+
+Midterm
+
+# Introductions
+- One question or thought related to lecture last week (Inference in multiple regression, linear regression through matrices, transformations and assumptions)
+
+```{r, echo=F, warning=F, message=F, cache=F}
+list.of.packages <- c("ggplot2", "gridExtra", "MASS", "reshape2", "dplyr")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+
+library(ggplot2)
+library(gridExtra)
+library(MASS)
+library(reshape2)
+library(dplyr)
+```
+
+# Linear model variances
+
+Let $\vv{Y}=\mathbf{X}\vv{\beta}+\vv{\epsilon}$ where $\epsilon_i\sim[0,\sigma^2]$ i.i.d. That is, the residuals are centered at 0 and are i.i.d., but they are not Normal. Under some commonly met regularity conditions, [it can be shown](https://myweb.uiowa.edu/pbreheny/7110/wiki/clt-regression.html) that
+$$\frac{1}{\sigma}(\mathbf{X}^T\mathbf{X})^{1/2}(\vv{\hat{\beta}}-\vv{\beta})\xrightarrow{d}\textrm{MVN}(\vv{0},\mathbf{I_{p+1}})$$
+
+1. Suppose we have a consistent estimator for $\sigma$ (we have some $\hat{\sigma}$ such that $\hat{\sigma}\xrightarrow{p}\sigma$). In the original multivariate Normal convergence statement, we don't know $\sigma^2$, but we still want to say something about convergence. How can we use the consistent estimator instead?
+
+\vspace{3 cm}
+
+2. Find the approximate distribution of $\vv{\hat{\beta}}$ for large $n$.
+
+\vspace{2 cm}
+
+3. This result indicates that one of the linear model assumptions does not matter much with large $n$. Which assumption is this?
+
+\vspace{1 cm}
+
+\newpage
+
+# Coefficient correlation
+
+Recall that our sampling distribution of $\vv{\hat{\beta}}$ is $$\vv{\hat{\beta}}\sim\textrm{MVN}(\vv{\beta}, \sigma^2(\mathbf{X}^T\mathbf{X})^{-1})$$
+We usually estimate the variance-covariance matrix with $\hat{\sigma}^2(\mathbf{X}^T\mathbf{X})^{-1}$, but covariances in the $\hat{\beta}_i$ are hard to interpret. Instead, it would be better to know the correlations.
+
+1. Let $\mathbf{\Sigma}=\sigma^2(\mathbf{X}^T\mathbf{X})^{-1}$. How can we create a correlation matrix from this? You should index into $\mathbf{\Sigma}$ in your answer.
+
+\vspace{3 cm}
+
+2. Three models were fit to predict emissions per capita:
+- Only energy supply per capita
+- Only tourist/visitor arrivals
+- Both energy supply per capita and tourist/visitor arrivals.
+
+A correlation matrix for the coefficients is shown for the last model. Explain the large drop in the tourist/visitor arrivals coefficient from model 2 to model 3. Note that in the original data the energy supply per capita and tourist/visitor arrivals are slightly positively correlated.
+
+```{r, echo=F}
+countries <- read.csv("data/country_stats.csv", check.names = F)
+countries_2010 <- countries[countries$Year == 2010,]
+
+countries_2010 <- rename(countries_2010, Emissions = `Emissions per capita (metric tons of carbon dioxide)`,
+       `Tourists` = `Tourist/visitor arrivals (thousands)`,
+       `Energy supply` = `Supply per capita (gigajoules)`,)
+
+lm1 <- lm(log2(`Emissions`) ~ log2(`Energy supply`), 
+          countries_2010[countries_2010$`Emissions` > 0,])
+
+summary(lm1)$coefficients
+
+lm2 <- lm(log2(`Emissions`) ~ log2(`Tourists`), 
+          countries_2010[countries_2010$`Emissions` > 0,])
+
+summary(lm2)$coefficients
+
+lm3 <- lm(log2(`Emissions`) ~ log2(`Energy supply`) + 
+            log2(`Tourists`), 
+          countries_2010[countries_2010$`Emissions` > 0,])
+
+summary(lm3)$coefficients
+
+lm3_vcov <- vcov(lm3)
+cormat <- t(t(lm3_vcov/sqrt(diag(lm3_vcov))) / sqrt(diag(lm3_vcov)))
+round(cormat, 3)
+```
+
+\vspace{3 cm}
+
+3. Consider the following simulation. We will generate data from the model $Y_i=\beta_1X_{i,1}+\beta_2X_{i,2}+\epsilon_i$ with $\epsilon_i\sim\mathcal{N}(0, \sigma^2)$. (We'll have $\beta_1=\beta_2$, but, of course, the linear model doesn't know this.)
+
+- First, the columns $\vv{X}_1$ and $\vv{X}_2$ will be correlated, and we will fit either a regression just on $\vv{X}_1$ or a regression on both $\vv{X}_1$ and $\vv{X}_2$.
+- Second, we will make $\vv{X_1}$ and $\vv{X_2}$ uncorrelated but make $\vv{X_2}$ have a very large variance, and we will again test models with and without $\vv{X_2}$.
+
+We'll record the p-value of the $\hat{\beta}_1$ coefficient each time.
+
+```{r, echo=F, fig.width=6, fig.height=3, fig.align='center', cache=T, warning=F}
+set.seed(139)
+
+nsims = 10000
+n = 20
+beta_1 = 2
+beta_2 = 2
+sigma = 2
+
+# Correlation matrix for Xs
+Sigma = cbind(c(1, 0.5), c(0.5, 1))
+
+# Model with predictors for only X_1
+pvals_single = vector(length = nsims)
+for (i in 1:nsims) {
+  x = mvrnorm(n = n, rep(0, 2), Sigma)
+  y = x %*% c(beta_1, beta_2) + rnorm(n, 0, sigma)
+  pvals_single[i] = summary(lm(y ~ x[,1]))$coefficients[2, 4]
+}
+
+# Model with predictors for X_1 and X_2
+pvals_double = vector(length = nsims)
+for (i in 1:nsims) {
+  x = mvrnorm(n = n, rep(0, 2), Sigma)
+  y = x %*% c(beta_1, beta_2) + rnorm(n, 0, sigma)
+  pvals_double[i] = summary(lm(y ~ x))$coefficients[2, 4]
+}
+
+out_data = data.frame(predictors = as.factor(c(rep(1, nsims), rep(2, nsims))), pvalue = c(pvals_single, pvals_double))
+
+plot1 <- ggplot(out_data, aes(x = log(pvalue), fill = predictors)) + 
+  geom_histogram(alpha=0.5, position="identity", bins=50) + 
+  theme_bw() + 
+  labs(fill="Predictors") + 
+  ylab("Count") + 
+  ggtitle("Scenario 1") + 
+  theme(legend.position = "none") + 
+  xlim(c(-20, 1)) + 
+  ylim(c(0, 1500))
+
+# Notice the very large variance of X_2
+Sigma = cbind(c(1, 0), c(0, 10))
+
+# Model with X_1 as the only predictor
+pvals_single = vector(length = nsims)
+for (i in 1:nsims) {
+  x = mvrnorm(n = n, rep(0, 2), Sigma)
+  y = x %*% c(beta_1, beta_2) + rnorm(n, 0, sigma)
+  pvals_single[i] = summary(lm(y ~ x[,1]))$coefficients[2, 4]
+}
+
+# Model with both X_1 and X_2 as predictors
+pvals_double = vector(length = nsims)
+for (i in 1:nsims) {
+  x = mvrnorm(n = n, rep(0, 2), Sigma)
+  y = x %*% c(beta_1, beta_2) + rnorm(n, 0, sigma)
+  pvals_double[i] = summary(lm(y ~ x))$coefficients[2, 4]
+}
+
+out_data = data.frame(predictors = as.factor(c(rep(1, nsims), rep(2, nsims))), pvalue = c(pvals_single, pvals_double))
+
+plot2 <- ggplot(out_data, aes(x = log(pvalue), fill = predictors)) + 
+  geom_histogram(alpha=0.5, position="identity", bins = 50) + 
+  theme_bw() + 
+  labs(fill="Predictors") + 
+  ylab("Count") + 
+  ggtitle("Scenario 2") + 
+  xlim(c(-20, 1)) + 
+  ylim(c(0, 1500))
+
+grid.arrange(plot1, plot2, ncol=2, widths=c(1,1.3))
+```
+
+Explain the p-value trends in the missing-predictor models. Reference the equation for the variance-covariance matrix as necessary.
+
+\vspace{2 cm}
+
+4. Consider the design matrix $$\mathbf{X} = \begin{bmatrix}
+    1 & 1\\
+    1 & 1\\
+    1 & a\\
+  \end{bmatrix}$$
+  
+  What do the rows represent? What do the columns represent? Why should the first column be all $1$s?
+  
+\vspace{1 cm}
+
+5. Find the variance of $\hat{\beta}_1$ as a function of $a$ and $\sigma^2$.
+
+\vspace{5 cm}
+
+6. What does this say about how the variance of $\hat{\beta}_1$ changes with $a$? Why does this make sense?
+
+\vspace{2 cm}
+
+\newpage
+
+# Contrast test and limiting cases
+
+Recall the set-up for a contrast test: $H_0: \vv{C}^T\vv{\beta}=\gamma_0$ vs. $H_a: \vv{C}^T\vv{\beta}\neq\gamma_0$. Under the null, the following random variable has a $t_{n-(p+1)}$ distribution.
+$$T=\frac{\vv{C}^T\vv{\hat{\beta}}-\gamma_0}{\hat{\sigma}\sqrt{\vv{C}^T(X^TX)^{-1}\vv{C}}}$$
+
+1. Name two situations in which we would take $\gamma_0$ to be 0. What would the contrast vectors be in these cases?
+
+\vspace{3 cm}
+
+2. Perform a formal contrast test based on the energy supply per capita plus tourists/visitors model to determine whether the mean emissions for countries like Seychelles is significantly different from the mean emissions for countries like Madagascar. (The results are given as Seychelles - Madagascar.)
+
+```{r, echo=F}
+contrast.test <- function(fit_lm, vec1, vec2) { # Takes named vector but uses the given order
+  beta.hat = coef(fit_lm)
+  C = vec1 - vec2
+  t.stat = C %*% beta.hat/sqrt(t(C) %*% vcov(fit_lm) %*% C)
+  p.value = 2*(pt(abs(t.stat),df=fit_lm$df.residual, lower.tail = F))
+  return (c("t.stat" = t.stat, "p.value" = p.value, "df" = fit_lm$df.residual))
+}
+
+c("(Intercept)" = 1, log2(unlist(countries_2010[countries_2010$Country == "Seychelles", 
+                                      c("Energy supply", "Tourists")]))) - 
+  c("(Intercept)" = 1, log2(unlist(countries_2010[countries_2010$Country == "Madagascar", 
+                                        c("Energy supply", "Tourists")])))
+
+contrast.test(lm3, c("(Intercept)" = 1, log2(unlist(countries_2010[countries_2010$Country == "Seychelles", 
+                                                         c("Energy supply", "Tourists")]))),
+              c("(Intercept)" = 1, log2(unlist(countries_2010[countries_2010$Country == "Madagascar", 
+                                                    c("Energy supply", "Tourists")]))))
+```
+\vspace{3 cm}
+
+3. Name two cases in which a contrast test should give the same result as another test.
+
+\vspace{3 cm}

@@ -37,176 +37,99 @@ Midterm
 # Introductions
 - One question or thought related to lecture last week (Inference in multiple regression, linear regression through matrices, transformations and assumptions)
 
-# Normality assumption: https://myweb.uiowa.edu/pbreheny/7110/wiki/clt-regression.html
+```{r, echo=F, warning=F, message=F, cache=F}
+list.of.packages <- c("ggplot2", "gridExtra", "MASS", "reshape2", "dplyr")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
 
-# The case of the disappearing significance
-
-This section will deal with a data set of country-level statistics from [this source](https://www.gu.se/en/quality-government/qog-data/data-downloads/standard-dataset) with an explanation of the data encoding found [here](https://www.qogdata.pol.gu.se/data/codebook_std_jan22.pdf).
-
-```{r}
-countries <- read.csv("data/countries.csv")
+library(ggplot2)
+library(gridExtra)
+library(MASS)
+library(reshape2)
+library(dplyr)
 ```
 
-A few useful columns:
+# Linear model variances
 
-- `spi_ospi`: Overall social progress index on 0-100 scale
-- `mad_gdppc`: GDP per capita
-- `wdi_expedu`: Government expenditure on education as percent of GDP
-- `wvs_fight`: Proportion of people who answered affirmatively to "Of course, we all hope that there will not be another war, but if it were to come to that, would you be willing to fight for your country?"
-- `wvs_jabribe`: Average response on scale of 1 (never justifiable) to 10 (always justifiable) to the question: "Do you think the following can be justified: someone accepting a bribe in the course of their duties."
+Let $\vv{Y}=\mathbf{X}\vv{\beta}+\vv{\epsilon}$ where $\epsilon_i\sim[0,\sigma^2]$ i.i.d. That is, the residuals are centered at 0 and are i.i.d., but they are not Normal. Under some commonly met regularity conditions, [it can be shown](https://myweb.uiowa.edu/pbreheny/7110/wiki/clt-regression.html) that
+$$\frac{1}{\sigma}(\mathbf{X}^T\mathbf{X})^{1/2}(\vv{\hat{\beta}}-\vv{\beta})\xrightarrow{d}\textrm{MVN}(\vv{0},\mathbf{I_{p+1}})$$
 
-1. Fit four linear models to predict a country's overall social progress index: one based on each variable.  Interpret each result.  Do these make sense?
+1. Suppose we have a consistent estimator for $\sigma$ (we have some $\hat{\sigma}$ such that $\hat{\sigma}\xrightarrow{p}\sigma$). In the original multivariate Normal convergence statement, we don't know $\sigma^2$, but we still want to say something about convergence. How can we use the consistent estimator instead?
 
-```{r}
-summary(lm(spi_ospi ~ mad_gdppc, countries))$coefficients
-summary(lm(spi_ospi ~ wdi_expedu, countries))$coefficients
-summary(lm(spi_ospi ~ wvs_fight, countries))$coefficients
-summary(lm(spi_ospi ~ wvs_jabribe, countries))$coefficients
-```
+We can simply replace $\sigma$ with $\hat{\sigma}$. By the continuous mapping theorem, $\frac{\sigma}{\hat{\sigma}}\xrightarrow{p}\frac{\sigma}{\sigma}=1$, so by Slutsky's theorem 
+$$\frac{1}{\hat{\sigma}}(\mathbf{X}^T\mathbf{X})^{1/2}(\vv{\hat{\beta}}-\vv{\beta})=\frac{\sigma}{\hat{\sigma}}\frac{1}{\sigma}(\mathbf{X}^T\mathbf{X})^{1/2}(\vv{\hat{\beta}}-\vv{\beta})\xrightarrow{d}\textrm{MVN}(\vv{0},\mathbf{I_{p+1}})$$
 
-GDP per capita is significantly positively associated ($t$-stat 10.1, p-value $\leq 10^{-15}$) with a country's overall social progress index with a \$10000 increase in GDP per capita associated with a 4.7 point improvement in the OSPI.  Education expenditures are significantly positively associated ($t$-stat 5.5, p-value $\leq 10^{-6}$) with a country's overall social progress index with a 1\% GDP increase in education spending associated with a 4.9 point improvement in the OSPI.  Willingness to fight for one's country is significantly negatively associated ($t$-stat -3.1, p-value $.003$) with a country's overall social progress index with a 10\% increase in citizens willing to fight associated with a 2.4 point decrease in the OSPI.  Acceptability of a bribe is significantly associated ($t$-stat -3.0, p-value $0.004$) with a decrease in a country's overall social progress index with a 1 point increase in bribe acceptability corresponding to a 6.3 point decrease in OSPI.  These all seem about right, although the "willingness to fight" effect might be a little surprising.
+2. Find the approximate distribution of $\vv{\hat{\beta}}$ for large $n$.
 
-2. Fit a linear model to predict a country's overall social progress index from GDP per capita and education expenditures.  Find the correlation between the coefficients for GDP and education expenditures.
+By rearranging the equation above, we get 
+$$\vv{\hat{\beta}}\dot{\sim}\textrm{MVN}(\vv{\beta},\hat{\sigma}^2(\mathbf{X}^T\mathbf{X})^{-1})$$
+which is the same as the exact distribution (with $\sigma^2$ instead) when the $\epsilon_i$ are Normal.
 
-```{r}
-lm2 <- lm(spi_ospi ~ mad_gdppc + wdi_expedu, countries)
-summary(lm2)
+3. This result indicates that one of the linear model assumptions does not matter much with large $n$. Which assumption is this?
 
-# This is a pretty good general purpose command for getting the correlation of predictors
-# Divides the variance covariance matrix by the standard deviation of the rows and columns
-# to get the pairwise correlations
-lm2_vcov <- vcov(lm2)
-t(t(lm2_vcov/sqrt(diag(lm2_vcov))) / 
-    sqrt(diag(lm2_vcov)))[2:nrow(lm2_vcov), 2:nrow(lm2_vcov)]
-```
-Every \$10000 increase in GDP per capita is associated with a 4.5 point increase in OSPI after controlling for the association with education expenditures, and the result is very significant ($t$-stat 9.0, p-value $<10^{-14}$).  A 1\% increase in percent GDP spent on education is associated with a 3.4 point increase in OSPI after controlling for the association with GDP per capita, and the result is very significant ($t$-stat 4.7, p-value $<10^{-5}$).
+The normality assumption does not matter much with large $n$.
 
-3. Fit a linear model to predict a country's overall social progress index from all the variables we have considered so far and print the summary.  What happens to the `wdi_expedu` significance?  Print the pairwise correlation between the fit coefficients.  What's explaining the change in `wdi_expedu` significance?  How can you test this?
+\newpage
 
-```{r}
-lm3 <- lm(spi_ospi ~ mad_gdppc + wdi_expedu + wvs_fight + wvs_jabribe, countries)
-summary(lm3)
+# Coefficient correlation
+
+Recall that our sampling distribution of $\vv{\hat{\beta}}$ is $$\vv{\hat{\beta}}\sim\textrm{MVN}(\vv{\beta}, \sigma^2(\mathbf{X}^T\mathbf{X})^{-1})$$
+We usually estimate the variance-covariance matrix with $\hat{\sigma}^2(\mathbf{X}^T\mathbf{X})^{-1}$, but covariances in the $\hat{\beta}_i$ are hard to interpret. Instead, it would be better to know the correlations.
+
+1. Let $\mathbf{\Sigma}=\sigma^2(\mathbf{X}^T\mathbf{X})^{-1}$. How can we create a correlation matrix from this? You should index into $\mathbf{\Sigma}$ in your answer.
+
+Copy $\mathbf{\Sigma}$ into a new matrix $\mathbf{\Sigma}'$. Then, divide the $i^{th}$ row in $\mathbf{\Sigma}'$ by $\sqrt{\mathbf{\Sigma}_{i,i}}$. Now, divide the $i^{th}$ column in $\mathbf{\Sigma}'$ by $\sqrt{\mathbf{\Sigma}_{i,i}}$. This is now the correlation matrix since the entry corresponding to $\textrm{Cov}(\hat{\beta}_i, \hat{\beta}_j)$ is divided by $\sqrt{\textrm{Var}(\hat{\beta}_i)\textrm{Var}(\hat{\beta}_j)}$.
+
+2. Three models were fit to predict emissions per capita:
+- Only energy supply per capita
+- Only tourist/visitor arrivals
+- Both energy supply per capita and tourist/visitor arrivals.
+
+A correlation matrix for the coefficients is shown for the last model. Explain the large drop in the tourist/visitor arrivals coefficient from model 2 to model 3. Note that in the original data the energy supply per capita and tourist/visitor arrivals are slightly positively correlated.
+
+```{r, echo=F}
+countries <- read.csv("data/country_stats.csv", check.names = F)
+countries_2010 <- countries[countries$Year == 2010,]
+
+countries_2010 <- rename(countries_2010, Emissions = `Emissions per capita (metric tons of carbon dioxide)`,
+       `Tourists` = `Tourist/visitor arrivals (thousands)`,
+       `Energy supply` = `Supply per capita (gigajoules)`,)
+
+lm1 <- lm(log2(`Emissions`) ~ log2(`Energy supply`), 
+          countries_2010[countries_2010$`Emissions` > 0,])
+
+summary(lm1)$coefficients
+
+lm2 <- lm(log2(`Emissions`) ~ log2(`Tourists`), 
+          countries_2010[countries_2010$`Emissions` > 0,])
+
+summary(lm2)$coefficients
+
+lm3 <- lm(log2(`Emissions`) ~ log2(`Energy supply`) + 
+            log2(`Tourists`), 
+          countries_2010[countries_2010$`Emissions` > 0,])
+
+summary(lm3)$coefficients
 
 lm3_vcov <- vcov(lm3)
-t(t(lm3_vcov/sqrt(diag(lm3_vcov))) / 
-    sqrt(diag(lm3_vcov)))[2:nrow(lm3_vcov), 2:nrow(lm3_vcov)]
-
-# Checking to see if the dropped observations explain the change
-lm4 <- lm(spi_ospi ~ mad_gdppc + wdi_expedu, 
-          countries[!is.na(countries$wvs_fight) & !is.na(countries$wvs_jabribe),])
-summary(lm4)
-
-lm4_vcov <- vcov(lm4)
-t(t(lm4_vcov/sqrt(diag(lm4_vcov))) / 
-    sqrt(diag(lm4_vcov)))[2:nrow(lm4_vcov), 2:nrow(lm4_vcov)]
+cormat <- t(t(lm3_vcov/sqrt(diag(lm3_vcov))) / sqrt(diag(lm3_vcov)))
+round(cormat, 3)
 ```
+On their own, energy supply per capita and tourist/visitor arrivals are both positively associated with emissions, which makes sense. In the last model, the coefficients for these two variables are quite negatively correlated, meaning that as one increases the other tends to decrease. This explains why both coefficients are slightly less than in their separate models, and the tourist/visitor arrivals coefficient is shrunk more because the energy supply per capita is much more strongly associated with emissions.
 
-Education spending goes from being very significant to being insignificant.  The pairwise correlations are not very strong between education spending and the new variables added, but the pairwise correlation has increased considerably between education and GDP per capita.  Looking carefully, we can see that the number of included observations has decreased from 115 to 61, so almost half of the data points have been dropped.  When we refit the original model with this subset of the data, we see that the eliminated data was driving the significance before.
+3. Consider the following simulation. We will generate data from the model $Y_i=\beta_1X_{i,1}+\beta_2X_{i,2}+\epsilon_i$ with $\epsilon_i\sim\mathcal{N}(0, \sigma^2)$. (We'll have $\beta_1=\beta_2$, but, of course, the linear model doesn't know this.)
 
-4. Seychelles is an archipelagic country consisting of 115 islands in the Indian Ocean off the east coast of Africa.  It has a GDP per capita and education expenditure percentage listed but no OSPI.  Use the GDP per capita and education expenditures model to provide a 95\% confidence and prediction interval for OSPI.  What is each interval trying to capture?
+- First, the columns $\vv{X}_1$ and $\vv{X}_2$ will be correlated, and we will fit either a regression just on $\vv{X}_1$ or a regression on both $\vv{X}_1$ and $\vv{X}_2$.
+- Second, we will make $\vv{X_1}$ and $\vv{X_2}$ uncorrelated but make $\vv{X_2}$ have a very large variance, and we will again test models with and without $\vv{X_2}$.
 
-```{r}
-predict(lm2,newdata = countries[countries$cname=="Seychelles",],interval = "confidence")
-predict(lm2,newdata = countries[countries$cname=="Seychelles",],interval = "prediction")
-```
+We'll record the p-value of the $\hat{\beta}_1$ coefficient each time.
 
-The confidence interval is intended to capture the average of all OSPIs for countries like Seychelles.  The prediction interval is intended to capture the actual OSPI for a country like Seychelles.
+```{r, echo=F, fig.width=6, fig.height=3, fig.align='center', cache=T, warning=F}
+set.seed(139)
 
-# Contrast test and limiting cases
-
-Recall the setup for a contrast test: $H_0: \vec{C}^T\vec{\beta}=\gamma_0$ vs. $H_a: \vec{C}^T\vec{\beta}\neq\gamma_0$.  Under the null, the following random variable has a $t_{n-(p+1)}$ distribution.
-$$T=\frac{\vec{C}^T\hat{\vec{\beta}}-\gamma_0}{\hat{\sigma}\sqrt{C^T(X^TX)^{-1}C}}$$
-
-1. Name two situations in which we would take $\gamma_0$ to be 0.
-
-We could take $\gamma_0$ to be 0 if we wanted to see whether a single predictor had any effect.  We could also take $\gamma_0$ to be 0 if we wanted to see whether the difference in two contrast vectors was significant.
-
-2. Write a function that will take a linear model and two named vectors and run a contrast test for a difference between the response variable.  Hint: `vcov(fit_lm)` is the same as $\hat{\sigma^2}(X^TX)^{-1}$ and `coef(fit_lm)` gets the fit coefficeints of the model.
-
-```{r}
-contrast.test <- function(fit_lm, vec1, vec2) {
-  beta.hat = coef(fit_lm)
-  C = vec1 - vec2
-  t.stat = C %*% beta.hat/sqrt(t(C) %*% vcov(fit_lm) %*% C)
-  p.value = 2*(1-pt(abs(t.stat),df=fit_lm$df.residual))
-  return (c("t.stat" = t.stat, "p.value" = p.value, "df" = fit_lm$df.residual))
-}
-```
-
-3. Perform a formal contrast test based on the GDP per capita plus education expenditures model to determine whether the mean OSPI for (mythical) countries like Seychelles is significantly different from the mean OSPI for (mythical) countries like Madagascar.
-
-```{r}
-c("(Intercept)" = 1, unlist(countries[countries$cname == "Seychelles", 
-                                      c("mad_gdppc", "wdi_expedu")])) - 
-  c("(Intercept)" = 1, unlist(countries[countries$cname == "Madagascar", 
-                                        c("mad_gdppc", "wdi_expedu")]))
-
-contrast.test(lm2, c("(Intercept)" = 1, unlist(countries[countries$cname == "Seychelles", 
-                                                         c("mad_gdppc", "wdi_expedu")])),
-              c("(Intercept)" = 1, unlist(countries[countries$cname == "Madagascar", 
-                                                    c("mad_gdppc", "wdi_expedu")])))
-```
-To determine whether OSPI in countries like Seychelles is higher than in countries like Madagascar based on GDP per capita and education expenditures, we want to test $H_0: 28103\beta_1 + 1.6\beta_2=0$ vs $H_a: 28103\beta_1 + 1.6\beta_2\neq0$.  The resulting $t$-statistic is 11.1 based on 112 degrees of freedom, resulting in a p-value of $<10^{-5}$, so we reject the null and conclude that countries with predictors like Seychelles are very likely to have a higher average OSPI than countries with predictors like Madagascar.
-
-4. Name and check two limiting cases to ensure the function works as intended.
-
-- When two contrast vectors differ by 1 in a single predictor, we expect to see the same result as when running a $t$-test on that predictor itself.
-
-- When the model contains only a single categorical predictor, a test between a contrast vector with both 1s vs a contrast vector with only the intercept as 1 should be the same as running a $t$-test.
-
-```{r}
-# Make sure single predictor case collapses to t-test
-contrast.test(lm2, c("(Intercept)" = 0, "mad_gdppc" = 1, "wdi_expedu" = 0),
-              c("(Intercept)" = 0, "mad_gdppc" = 0, "wdi_expedu" = 0))
-summary(lm2)$coefficients
-```
-
-```{r}
-# Binary predictor t-test
-lm5 <- lm(spi_ospi ~ as.factor(bmr_dem), countries)
-summary(lm5)$coefficients
-contrast.test(lm5, c("(Intercept)" = 0, "bmr_dem" = 1),
-              c("(Intercept)" = 0, "bmr_dem" = 0))
-t.test(spi_ospi ~ bmr_dem, countries)
-```
-The $t$-test from a linear model and the contrast test on a single coefficient always give the same result as expected.  A $t$-test on the data itself and a contrast test for a categorical variable's impact give every so slightly different results.  I'm not sure whether this is due to numerical precision issues, degrees of freedom estimation, or something else.  (Later realization is that it has to do with the number of items in each group.  If the groups are balanced the $t$-statistics are the same and the only thing different is the degrees of freedom.)
-
-# P-values high and low
-
-1. Explain intuitively how increasing the number of predictors in a model could reduce the significance of a particular predictor relative to a model with only that predictor.  Find a pair of matrices $X_1$ and $X_2$ that illustrate this point.  Hint: Recall that the standard error of $\hat{\beta_i}$ is $\hat{\sigma}\sqrt{C^T(X^TX)^{-1}C}$ where $C$ is a one-hot encoded vector with the $i^{th}$ entry as a 1.
-
-We have observed this phenomenon a few times already: this is often caused by predictors with a large amount of collinearity increasing $(X^TX)^{-1}$.  For example, for $X = \begin{bmatrix}
-    1 & 0\\
-    0  & 1\\
-  \end{bmatrix}$, $(X^TX)^{-1}=
-  \begin{bmatrix}
-    1 & 0\\
-    0  & 1\\
-  \end{bmatrix}$ but for $X = \begin{bmatrix}
-    1 & 0.5\\
-    0.5  & 1\\
-  \end{bmatrix}$, $(X^TX)^{-1}=\begin{bmatrix}
-    2.22 & -1.78\\
-    -1.78  & 2.22\\
-  \end{bmatrix}$, so the diagonals (what contribute to the standard error) increase.
-
-2. Explain intuitively how increasing the number of predictors in a model could increase the significance of a particular predictor relative to a model with only that predictor.
-
-If the additional predictors are useful for prediction and they are orthogonal to the original predictor's observed values, the additional predictors can decrease $\hat{\sigma}^2$, increasing the significance.
-
-3. Interpret the results of the following simulation:
-
-We will generate data from the model $Y_i=\beta_1X_{1,i}+\beta_2X_{2,i}+\epsilon_i$ with $\epsilon_i\sim\mathcal{N}(0, \sigma^2)$.  Let $\beta_1=1$, $\beta_2=2$, $\sigma^2=2^2$.  
-
-To show how the significance can decrease, we will first have $\vec{X}_1$ and $\vec{X}_2$ be correlated and test models with and without $X_2$.
-
-```{r}
-library(MASS)
-library(ggplot2)
-
-nsims = 1000
+nsims = 10000
 n = 20
-beta_1 = 1
+beta_1 = 2
 beta_2 = 2
 sigma = 2
 
@@ -231,19 +154,15 @@ for (i in 1:nsims) {
 
 out_data = data.frame(predictors = as.factor(c(rep(1, nsims), rep(2, nsims))), pvalue = c(pvals_single, pvals_double))
 
-ggplot(out_data, aes(x = log(pvalue), fill = predictors)) + 
-  geom_histogram(alpha=0.5, position="identity", bins=30) + 
-  theme_bw()
-```
-
-To show how significance can increase, we will have $\vec{X_1}$ and $\vec{X_2}$ be uncorrelated but have $X_2$ have a very large variance, and we will test models with and without $X_2$.
-
-```{r}
-nsims = 1000
-n = 20
-beta_1 = 1
-beta_2 = 2
-sigma = 2
+plot1 <- ggplot(out_data, aes(x = log(pvalue), fill = predictors)) + 
+  geom_histogram(alpha=0.5, position="identity", bins=50) + 
+  theme_bw() + 
+  labs(fill="Predictors") + 
+  ylab("Count") + 
+  ggtitle("Scenario 1") + 
+  theme(legend.position = "none") + 
+  xlim(c(-20, 1)) + 
+  ylim(c(0, 1500))
 
 # Notice the very large variance of X_2
 Sigma = cbind(c(1, 0), c(0, 10))
@@ -266,77 +185,111 @@ for (i in 1:nsims) {
 
 out_data = data.frame(predictors = as.factor(c(rep(1, nsims), rep(2, nsims))), pvalue = c(pvals_single, pvals_double))
 
-ggplot(out_data, aes(x = log(pvalue), fill = predictors)) + 
-  geom_histogram(alpha=0.5, position="identity", bins = 30) + 
-  theme_bw()
+plot2 <- ggplot(out_data, aes(x = log(pvalue), fill = predictors)) + 
+  geom_histogram(alpha=0.5, position="identity", bins = 50) + 
+  theme_bw() + 
+  labs(fill="Predictors") + 
+  ylab("Count") + 
+  ggtitle("Scenario 2") + 
+  xlim(c(-20, 1)) + 
+  ylim(c(0, 1500))
+
+grid.arrange(plot1, plot2, ncol=2, widths=c(1,1.3))
 ```
 
-# Winner takes all
+Explain the p-value trends in the missing-predictor models. Reference the equation for the variance-covariance matrix as necessary.
 
-1. Many times in the real world we have a situation where some particular predictor underlies many other predictors.  The following simulation shows a situation in which there is an underlying variable `x_main` and three related predictors `x_2`, `x_3`, and `x_4`.  First look at the histograms from when the coefficients and variances are the same for all the $X$s.  Compare a multiple regression model with a single-variable regression model for each coefficient and comment on what's happening.  Then, by changing the values of the beta coefficients and the variances of `x_main`, `x_2`, `x_3`, and `x_4`, explore what factors drive significance in a multiple regression model.
+In the first simulation, when the predictors are correlated but one is missing, some of the predictive ability of $\vv{X_2}$ is absorbed by $\vv{X_1}$, causing it to be more significant than when $\vv{X_2}$ is also included. In the second simulation, missing $\vv{X_2}$ results in a large amount of unexplained variation, driving up $\hat{\sigma}^2$ in the variance-covariance matrix and therefore increasing the apparent variance of $\hat{\beta}_1$, making it less significant.
 
-```{r}
-library(reshape2)
+4. Consider the design matrix $$\mathbf{X} = \begin{bmatrix}
+    1 & 1\\
+    1 & 1\\
+    1 & a\\
+  \end{bmatrix}$$
+  
+  What do the rows represent? What do the columns represent? Why should the first column be all $1$s?
+  
+The rows are individual data observations. The columns are predictors. The first column is all $1$s because every observation uses the same intercept.
 
-nsims = 1000
-n = 20
-beta_1 = 2
-beta_2 = 2
-beta_3 = 2
-beta_4 = 2
-sigma = 2
+5. Find the variance of $\hat{\beta}_1$ as a function of $a$ and $\sigma^2$.
 
-# Model with X_1 as the only predictor
-pvals = matrix(nrow = nsims, ncol = 4)
-for (i in 1:nsims) {
-  x_main = rnorm(n, 0, 2)
-  x_2 = rnorm(n, x_main, 2)
-  x_3 = rnorm(n, x_main, 2)
-  x_4 = rnorm(n, x_main, 2)
-  y = beta_1 * x_main + beta_2 * x_2 + beta_3 * x_3 + beta_4 * x_4 + rnorm(n, 0, sigma)
-  pvals[i,] = summary(lm(y ~ x_main + x_2 + x_3 + x_4))$coefficients[2:5, 4]
+$$\begin{aligned}\mathbf{X}^T\mathbf{X}=\begin{bmatrix}
+    3 & 2+a\\
+    2+a  & a^2+2\\
+  \end{bmatrix}\implies (\mathbf{X}^T\mathbf{X})^{-1}&=\frac{1}{3a^2+6-(4+4a+a^2)}\begin{bmatrix}
+    a^2+2 & -2-a\\
+    -2-a  & 3\\
+  \end{bmatrix}\\
+  &=\frac{1}{2a^2-4a+2}\begin{bmatrix}
+    a^2+2 & -2-a\\
+    -2-a  & 3\\
+  \end{bmatrix}\\
+  &=\frac{1}{2(a-1)^2}\begin{bmatrix}
+    a^2+2 & -2-a\\
+    -2-a  & 3\\
+  \end{bmatrix}\\
+  \end{aligned}$$
+  
+We can obtain the variance of $\hat{\beta}_1$ by extracting the bottom right entry and multiplying by $\sigma^2$ to get $$\textrm{Var}(\hat{\beta}_1)=\frac{3\sigma^2}{2(1-a)^2}$$
+
+6. What does this say about how the variance of $\hat{\beta}_1$ changes with $a$? Why does this make sense?
+
+The variance is highest when $a=1$ but decreases as $a$ is further from $1$. This makes sense because values of $a$ that are close to 1 don't give much information relative to the points we already have.
+
+\newpage
+
+# Contrast test and limiting cases
+
+Recall the set-up for a contrast test: $H_0: \vv{C}^T\vv{\beta}=\gamma_0$ vs. $H_a: \vv{C}^T\vv{\beta}\neq\gamma_0$. Under the null, the following random variable has a $t_{n-(p+1)}$ distribution.
+$$T=\frac{\vv{C}^T\vv{\hat{\beta}}-\gamma_0}{\hat{\sigma}\sqrt{\vv{C}^T(X^TX)^{-1}\vv{C}}}$$
+
+1. Name two situations in which we would take $\gamma_0$ to be 0. What would the contrast vectors be in these cases?
+
+- We could take $\gamma_0$ to be 0 if we wanted to see whether a single predictor had any effect. In this case, the contrast vector would be $0$s except for a single $1$ at the index of the predictor we care about.
+- We could also take $\gamma_0$ to be 0 if we wanted to see whether the difference in the predicted outputs from two sets of predictors was significant. In this case, the contrast vector would be the first set of predictors minus the second.
+
+2. Perform a formal contrast test based on the energy supply per capita plus tourists/visitors model to determine whether the mean emissions for countries like Seychelles is significantly different from the mean emissions for countries like Madagascar. (The results are given as Seychelles - Madagascar.)
+
+```{r, echo=F}
+contrast.test <- function(fit_lm, vec1, vec2) { # Takes named vector but uses the given order
+  beta.hat = coef(fit_lm)
+  C = vec1 - vec2
+  t.stat = C %*% beta.hat/sqrt(t(C) %*% vcov(fit_lm) %*% C)
+  p.value = 2*(pt(abs(t.stat),df=fit_lm$df.residual, lower.tail = F))
+  return (c("t.stat" = t.stat, "p.value" = p.value, "df" = fit_lm$df.residual))
 }
 
-out_data = melt(pvals)[,2:3]
-colnames(out_data) <- c("Coefficient", "pvalue")
+c("(Intercept)" = 1, log2(unlist(countries_2010[countries_2010$Country == "Seychelles", 
+                                      c("Energy supply", "Tourists")]))) - 
+  c("(Intercept)" = 1, log2(unlist(countries_2010[countries_2010$Country == "Madagascar", 
+                                        c("Energy supply", "Tourists")])))
 
-ggplot(out_data, aes(x = log(pvalue), fill = as.factor(Coefficient))) + 
-  geom_histogram(alpha=0.5, position="identity", bins = 30) + 
-  theme_bw()
+contrast.test(lm3, c("(Intercept)" = 1, log2(unlist(countries_2010[countries_2010$Country == "Seychelles", 
+                                                         c("Energy supply", "Tourists")]))),
+              c("(Intercept)" = 1, log2(unlist(countries_2010[countries_2010$Country == "Madagascar", 
+                                                    c("Energy supply", "Tourists")]))))
 ```
+To determine whether emissions in countries like Seychelles are higher than in countries like Madagascar, we want to test $H_0: 2.896\beta_1 - 0.163\beta_2=0$ vs. $H_a: 2.896\beta_1 - 0.163\beta_2\neq0$. The resulting $t$-statistic is 20.9 based on 128 degrees of freedom, resulting in a p-value of $4.9\times10^{-43}$, so we reject the null and conclude that countries like Seychelles are very likely to have higher average emissions than countries like Madagascar.
 
-```{r}
-library(reshape2)
+3. Name two cases in which a contrast test should give the same result as another test.
 
-nsims = 1000
-n = 20
-beta_1 = 2
-beta_2 = 2
-beta_3 = 2
-beta_4 = 2
-sigma = 2
+- When two contrast vectors differ by 1 in a single predictor, we expect to see the same result as when running a $t$-test on that predictor itself.
 
-# Model with X_1 as the only predictor
-pvals = matrix(nrow = nsims, ncol = 4)
-for (i in 1:nsims) {
-  x_main = rnorm(n, 0, 2)
-  x_2 = rnorm(n, x_main, 2)
-  x_3 = rnorm(n, x_main, 2)
-  x_4 = rnorm(n, x_main, 2)
-  y = beta_1 * x_main + beta_2 * x_2 + beta_3 * x_3 + beta_4 * x_4 + rnorm(n, 0, sigma)
-  pvals[i,1] = summary(lm(y ~ x_main))$coefficients[2, 4]
-  pvals[i,2] = summary(lm(y ~ x_2))$coefficients[2, 4]
-  pvals[i,3] = summary(lm(y ~ x_3))$coefficients[2, 4]
-  pvals[i,4] = summary(lm(y ~ x_4))$coefficients[2, 4]
-}
+- When the model contains only a single categorical predictor, a test between a vector with the intercept and category as 1s versus a vector with only the intercept as 1 should be the same as running a pooled $t$-test.
 
-out_data = melt(pvals)[,2:3]
-colnames(out_data) <- c("Coefficient", "pvalue")
+```{r, echo=F}
+# Make sure single predictor case collapses to t-test
+contrast.test(lm3, c("(Intercept)" = 0, "Energy supply" = 1, "Tourists" = 0),
+              c("(Intercept)" = 0, "Energy supply" = 0, "Tourists" = 0))
+summary(lm3)$coefficients
 
-ggplot(out_data, aes(x = log(pvalue), fill = as.factor(Coefficient))) + 
-  geom_histogram(alpha=0.5, position="identity", bins = 30) + 
-  theme_bw()
+# Make sure categorical predictor collapses to paired t-test
+countries_2010$is_africa <- grepl("Africa", countries_2010$Region)
+
+lm4 <- lm(log2(`Emissions`) ~ is_africa, 
+          countries_2010[countries_2010$`Emissions` > 0,])
+
+contrast.test(lm4, c("(Intercept)" = 1, "is_africaTRUE" = 1),
+              c("(Intercept)" = 1, "is_africaTRUE" = 0))
+t.test(log2(`Emissions`) ~ is_africa, countries_2010[countries_2010$`Emissions` > 0,], var.equal=T)
 ```
-
-In the multiple regression model, $\beta_1$ is usually much less significant than the auxiliary predictors even though it is the main predictor.  However, in the single regression model, it is much more significant.  By fiddling with the coefficients in the multiple regression model, we can see that increasing the $\beta$ coefficient makes a predictor more likely to be significant, and increasing the variance of an $\vec{X}$ increases the significance of its $\beta$ coefficient.  In general, increasing the variance of $\vec{X}_i$ increases the significance of its coefficient: in the original setup, $\vec{X}_i$ for $i\neq1$ had higher variances than $\vec{X}_1$, so they had lower p-values.
-

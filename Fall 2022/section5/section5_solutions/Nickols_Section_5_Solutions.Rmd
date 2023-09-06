@@ -130,7 +130,7 @@ To determine whether OSPI in countries like Seychelles is higher than in countri
 
 - When two contrast vectors differ by 1 in a single predictor, we expect to see the same result as when running a $t$-test on that predictor itself.
 
-- When the model contains only a single categorical predictor, a test between a contrast vector with both 1s vs a contrast vector with only the intercept as 1 should be the same as running a $t$-test.
+- When the model contains only a single categorical predictor, a test between a contrast vector with both 1s vs a contrast vector with only the intercept as 1 should be the same as running an equal variance $t$-test.
 
 ```{r}
 # Make sure single predictor case collapses to t-test
@@ -145,9 +145,9 @@ lm5 <- lm(spi_ospi ~ as.factor(bmr_dem), countries)
 summary(lm5)$coefficients
 contrast.test(lm5, c("(Intercept)" = 0, "bmr_dem" = 1),
               c("(Intercept)" = 0, "bmr_dem" = 0))
-t.test(spi_ospi ~ bmr_dem, countries)
+t.test(spi_ospi ~ bmr_dem, countries, var.equal=T)
 ```
-The $t$-test from a linear model and the contrast test on a single coefficient always give the same result as expected.  A $t$-test on the data itself and a contrast test for a categorical variable's impact give every so slightly different results.  I'm not sure whether this is due to numerical precision issues, degrees of freedom estimation, or something else.  (Later realization is that it has to do with the number of items in each group.  If the groups are balanced the $t$-statistics are the same and the only thing different is the degrees of freedom.)
+The $t$-test from a linear model and the contrast test on a single coefficient always give the same result as expected.  An equal variance $t$-test on the data itself and a contrast test for a categorical variable's impact give the same results.
 
 # P-values high and low
 

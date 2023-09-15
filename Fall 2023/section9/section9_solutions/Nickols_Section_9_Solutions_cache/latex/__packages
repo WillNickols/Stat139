@@ -1,4 +1,6 @@
 ggplot2
+randomForest
+dplyr
 rpart
 rpart.plot
-randomForest
+reshape2

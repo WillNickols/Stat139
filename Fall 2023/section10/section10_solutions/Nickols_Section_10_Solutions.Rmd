@@ -1,9 +1,16 @@
 ---
-output: pdf_document
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
 header-includes:
-   - \usepackage{tcolorbox}
-   - \usepackage{fancyhdr}
-   - \usepackage[utf8]{inputenc}
+- \usepackage{tcolorbox}
+- \usepackage{fancyhdr}
+- \usepackage[utf8]{inputenc}
+- \usepackage{wrapfig}
+- \usepackage{amsmath}
+- \usepackage{booktabs}
+- \usepackage{esvect}
 urlcolor: blue
 ---
 
@@ -14,11 +21,25 @@ urlcolor: blue
 \rfoot{Page \thepage}
 
 # Announcements
-- Make sure to sign in on the [google form](https://forms.gle/JGvZP8CPUhaefnLT6)
-- Pset 9 due December 2 at 5 pm
-- Final project due Wednesday December 14th at 5 pm
 
-```{r, echo=F, warning=F, message=F}
+\begin{wrapfigure}{r}{0.12\textwidth}
+  \centering
+    \vspace*{-1.3cm}
+    \includegraphics[width=\linewidth]{section_qr_code.png}
+\end{wrapfigure}
+
+Make sure to sign in on the [google form](https://forms.gle/xm1DfzuZFNcWU6fH8) (I send a list of which section questions are useful for which pset questions afterwards)
+
+Pset 8 due Friday 12/1
+
+# Introductions
+- One question or thought related to lecture last week (Weighted least squares, quantile regression, mixed effects models)
+
+```{r, echo=F, warning=F, message=F, cache=F}
+list.of.packages <- c("ggplot2", "lme4", "reshape2", "gridExtra", "dplyr", "MASS", "nlme")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+
 library(lme4)
 library(ggplot2)
 library(reshape2)
@@ -28,46 +49,46 @@ library(MASS)
 library(nlme)
 ```
 
-# Many ways to ~~skin a cat~~ [peel an orange](https://www.peta.org/features/animal-friendly-idioms/)
+# Many ways to peel an orange
 
 Recall the following linear model extensions:
 
-- Heteroscedasticity-consistent standard errors: $\vec{Y}=\mathbf{X}\vec{\beta}+\vec{\epsilon}$, $\epsilon\sim MVN(\vec{0}, \vec{\sigma^2}\mathbf{I}_{n\times n})$ where $\vec{\sigma}^2$ has non-identical entries
-- Weighted least squares: $\vec{Y}=\mathbf{X}\vec{\beta}+\vec{\epsilon}$, $\epsilon\sim MVN(\vec{0},\mathbf{W}^{-1}\sigma^2\mathbf{I}_{n\times n})$ where $\mathbf{W}$ is a diagonal matrix of weights
+- Heteroscedasticity-consistent standard errors: $\vv{Y}=\mathbf{X}\vv{\beta}+\vv{\epsilon}$, $\epsilon\sim MVN(\vv{0}, \mathbf{\Sigma})$ where $\mathbf{\Sigma}$ is a diagonal matrix with non-identical entries.
+- Weighted least squares: $\vv{Y}=\mathbf{X}\vv{\beta}+\vv{\epsilon}$, $\epsilon\sim MVN(\vv{0},\mathbf{W}^{-1}\sigma^2\mathbf{I}_{n\times n})$ where $\mathbf{W}$ is a diagonal matrix of weights.
 - Huber's method: Minimize $\textrm{loss}=\sum_{i}^ng(\hat\epsilon_i)$ with $$g(x)=\begin{cases} 
       x^2/2 & |x|<c \\
       c|x| - c^2/2 & |x|\geq c
       \end{cases}$$
-- Block correlations: $\vec{Y}=\mathbf{X}\vec{\beta}+\vec{\epsilon}$, $\epsilon\sim MVN(\vec{0}, \mathbf{\Sigma})$ with a covariance matrix like $$\mathbf{\Sigma}=\begin{bmatrix}
+- Block correlations: $\vv{Y}=\mathbf{X}\vv{\beta}+\vv{\epsilon}$, $\epsilon\sim MVN(\vv{0}, \mathbf{\Sigma})$ with a covariance matrix like $$\mathbf{\Sigma}=\begin{bmatrix}
 1 & \rho_1 & \rho_1 & 0 & 0 \\
 \rho_1 & 1 & \rho_1 & 0 & 0 \\
 \rho_1 & \rho_1 & 1 & 0 & 0 \\
 0 & 0 & 0 & 1 & \rho_2 \\
 0 & 0 & 0 & \rho_2 & 1 \\
 \end{bmatrix}	$$
-- Autoregressive: $\vec{Y}=\mathbf{X}\vec{\beta}+\vec{\epsilon}$, $\epsilon\sim MVN(\vec{0}, \mathbf{\Sigma})$ with a covariance matrix like $$\mathbf{\Sigma}=\begin{bmatrix}
+- Autoregressive: $\vv{Y}=\mathbf{X}\vv{\beta}+\vv{\epsilon}$, $\epsilon\sim MVN(\vv{0}, \mathbf{\Sigma})$ with a covariance matrix like $$\mathbf{\Sigma}=\begin{bmatrix}
 1 & \rho & \rho^2 & \rho^3 & \rho^4 \\
 \rho & 1 & \rho & \rho^2 & \rho^3 \\
 \rho^2 & \rho & 1 & \rho & \rho^2 \\
 \rho^3 & \rho^2 & \rho & 1 & \rho \\
 \rho^4 & \rho^3 & \rho^2 & \rho & 1 \\
 \end{bmatrix}	$$
-- Random intercepts: $Y_{ij}\sim\alpha + \alpha_i+\beta X_{ij}+\epsilon_{ij}$ with $\epsilon_{ij}\sim\mathcal{N}(0, \sigma^2_Y)$ and $\alpha_i\sim\mathcal{N}(0, \sigma^2_\alpha)$.  (Note that this version explicitly includes a fixed slope and a random slope with mean 0.  Random effects as you'll see them elsewhere (and in `lmer`) are usually specified to have mean 0, so including the fixed effect separately is a good practice.)
+- Random intercepts: $Y_{ij}\sim\alpha + \alpha_i+\beta X_{ij}+\epsilon_{ij}$ with $\epsilon_{ij}\sim\mathcal{N}(0, \sigma^2_Y)$ and $\alpha_i\sim\mathcal{N}(0, \sigma^2_\alpha)$. (Note that this version explicitly includes a fixed slope and a random slope with mean 0. Random effects as you'll see them elsewhere (and in `lmer`) are usually specified to have mean 0, so including the fixed effect separately is a good practice.)
 - Random slopes: $Y_{ij}\sim\alpha +(\beta + \beta_i)X_{ij}+\epsilon_{ij}$ with $\epsilon_{ij}\sim\mathcal{N}(0, \sigma^2_Y)$ and $\beta_i\sim\mathcal{N}(0, \sigma^2_\beta)$.
 
-1. For each of the scenarios below, which of the above linear model extensions would you use?
+1. For each of the scenarios below, which of the above linear model extensions would you use? Why?
 
-- Stock price over a week: Autoregressive
-- Wheat yield vs phosphorus fertilizer use in various Kansas counties: Block correlation, random intercepts, random slopes
-- Soil nitrate concentration vs fertilizer use where the nitrate measurements are taken with instruments of varying precision: Heteroscedasticity-consistent standard errors or weighted regression
-- Spotify listens vs release year: Huber's method
-- Day in year leaves start to fall vs latitude for various tree types: Block correlation, random intercepts, random slopes
+- Stock price over a week: Autoregressive (a high residual on one day might indicate a high residual on the next day)
+- Wheat yield vs phosphorus fertilizer use in various Kansas counties: Block correlation (residuals are correlated within a county), random intercepts (different counties have different baseline wheat yields), or random slopes (phosphorus use changes wheat yield differently in each county)
+- Soil nitrate concentration vs fertilizer use where the nitrate measurements are taken with instruments of varying precision: Heteroscedasticity-consistent standard errors or weighted regression (less precise instruments have higher standard errors or lower weights)
+- Spotify listens vs release year: Huber's method (trying to mitigate the outlier effect of songs that are very popular)
+- The day in the year leaves start to fall vs latitude for various tree types: Block correlation (trees of the same type lose their leaves around the same time), random intercepts (trees of the same type have different baseline leaf shedding times), or random slopes (different trees respond to different latitudes to lose their leaves at different times)
 
 2. Which line is which in the following models?
 
 - One line is a standard OLS; the other uses weighted regression.
 
-```{r, echo=F, warning=F}
+```{r, cache=T, echo=F, fig.width=4.5, fig.height=3, fig.align='center', warning=F}
 set.seed(1)
 x <- runif(100,0,10)
 y <- c(x[1:50] + rnorm(50, 0, 1), 2 * x[51:100] + rnorm(50, 0, 5))
@@ -84,19 +105,20 @@ dummy_df <- data.frame(dummy_x, dummy_y, Variance=cols)
 plot1 <- ggplot(df, aes(y=y, x=x, col=Variance)) + 
   geom_point() + 
   geom_line(data=dummy_df, aes(y=dummy_y, x=dummy_x), col="blue", size=1) + 
-  geom_smooth(method = "lm", aes(group=1), se = F, col="red", size=1)
+  geom_smooth(method = "lm", formula = 'y~x', aes(group=1), se = F, col="red", size=1) + 
+  theme_bw()
 
 saveRDS(plot1, "plot1.RDS")
 ```
-```{r, message=F, echo=F, fig.height=3, fig.width=6}
+```{r, cache=F, echo=F, fig.width=4.5, fig.height=3, fig.align='center', warning=F}
 readRDS(file = "plot1.RDS")
 ```
 
-Blue is the weighted regression.  It weights low variance observations more heavily as expected.
+Blue is the weighted regression. It weights low variance observations more heavily as expected.
 
 - One line is a standard OLS; the other uses Huber's method.
 
-```{r, echo=F, warning=F}
+```{r, cache=F, echo=F, fig.width=4.5, fig.height=3, fig.align='center', warning=F}
 set.seed(1)
 x <- sort(runif(100,0,10))
 y <- c(x + rnorm(100, 0, 1))
@@ -113,20 +135,21 @@ dummy_df <- data.frame(dummy_x, dummy_y)
 plot2 <- ggplot(df, aes(y=y, x=x)) + 
   geom_point() + 
   geom_line(data=dummy_df, aes(y=dummy_y, x=dummy_x), col="blue", size=1) + 
-  geom_smooth(method = "lm", aes(group=1), se = F, col="red", size=1)
+  geom_smooth(method = "lm", formula = 'y~x', aes(group=1), se = F, col="red", size=1) + 
+  theme_bw()
 
 saveRDS(plot2, "plot2.RDS")
 ```
 
-```{r, message=F, echo=F, fig.height=3, fig.width=6}
+```{r, cache=F, echo=F, fig.width=4.5, fig.height=3, fig.align='center', warning=F}
 readRDS(file = "plot2.RDS")
 ```
 
-Blue is Huber's method.  It is not as sensitive to outliers.
+Blue is Huber's method. It is not as sensitive to outliers.
 
 - One line is a standard OLS; the other uses autoregression.
 
-```{r, echo=F, warning=F}
+```{r, cache=F, echo=F, fig.width=4.5, fig.height=3, fig.align='center', warning=F}
 set.seed(2)
 x <- sort(runif(100,0,10))
 rho = 0.9
@@ -144,26 +167,27 @@ dummy_df <- data.frame(dummy_x, dummy_y)
 plot3 <- ggplot(df, aes(y=y, x=x)) + 
   geom_point() + 
   geom_line(data=dummy_df, aes(y=dummy_y, x=dummy_x), col="red", size=1) + 
-  geom_smooth(method = "lm", aes(group=1), se = F, col="blue", size=1)
+  geom_smooth(method = "lm", formula = 'y~x', aes(group=1), se = F, col="blue", size=1) + 
+  theme_bw()
 
 saveRDS(plot3, "plot3.RDS")
 ```
 
-```{r, message=F, echo=F, fig.height=3, fig.width=6}
+```{r, cache=F, echo=F, fig.width=4.5, fig.height=3, fig.align='center', warning=F}
 readRDS(file = "plot3.RDS")
 ```
 
-Red is the autoregression.  It's less influenced by tightly correlated nearby points.
+Red is the autoregression. It's less influenced by tightly correlated nearby points.
 
 \newpage
 
 # Meta-analysis analysis
 
-One common use of mixed effects models is in meta-analysis to aggregate the results of multiple studies.  This question will explore various methods of meta-analysis aggregation.
+One common use of mixed effects models is in meta-analysis to aggregate the results of multiple studies. This question will explore various methods of meta-analysis aggregation.
 
-1. A common plot in meta-analysis is a forest plot, showing the mean and standard deviation of some quantity of interest as determined by various studies as well as an aggregated mean and variance.  Given the following forest plots (technically these are axis-flipped forest plots), determine what a linear mixed effects model combining the studies should look like.
+1. A common plot in meta-analysis is a forest plot, showing the mean and standard error of some quantity of interest as determined by various studies as well as an aggregated mean and standard error. Given the following forest plots, plot the approximate mean and standard error for the aggregated effect from a linear mixed effects model.
 
-```{r, cache=T, echo=F}
+```{r, cache=F, echo=F, fig.width=6, fig.height=4.5, fig.align='center', warning=F}
 # Version 1
 
 set.seed(1)
@@ -210,7 +234,8 @@ plot1 <- ggplot(stats_df, aes(x=study, y=mean)) +
   geom_errorbar(aes(ymin=mean-2*sd, ymax=mean+2*sd), width=.2,
                 position=position_dodge(0.05)) + 
   ylab("Mean +/- 2 StDev") + 
-  xlab("Study")
+  xlab("Study") + 
+  theme_bw()
 
 # Version 2
 
@@ -253,19 +278,29 @@ plot2 <- ggplot(stats_df, aes(x=study, y=mean)) +
   geom_errorbar(aes(ymin=mean-2*sd, ymax=mean+2*sd), width=.2,
                 position=position_dodge(0.05)) + 
   ylab("Mean +/- 2 StDev") + 
-  xlab("Study")
+  xlab("Study") + 
+  theme_bw()
 
 grid.arrange(plot1, plot2, nrow=2)
 ```
 
-2. Sometimes, studies will not make available all their individual data points.  In these cases, we might only have a point estimate and standard error for a particular statistic of interest.  Assume that for study $i$ we have our statistic of interest $$\hat\beta_i\sim\mathcal{N}(\beta,\sigma_{\hat\beta_i}^2)$$ where we will approximate the true standard error $\sigma_{\hat\beta_i}^2$ with our estimated standard error $\hat\sigma_{\hat\beta_i}^2$.  This model specifies that there is some underlying effect $\beta$ and that each study will find some $\hat\beta_i$ with a standard error based on the study's sample size etc.  Assuming we have $n_{\textrm{studies}}$, use maximum likelihood estimation to find a point estimate for $\beta$.
+2. Sometimes, studies will not make available all their individual data points. In these cases, we might only have a point estimate and standard error for a particular statistic of interest. Assume that for study $i$ we have our statistic of interest $$\hat\beta_i\sim\mathcal{N}(\beta,\sigma_{\hat\beta_i}^2)$$ This model specifies that there is some underlying effect $\beta$ and that each study will find some $\hat\beta_i$ with a standard error based on the study's sample size etc. If we have $n_{\textrm{studies}}$ each with a $\hat{\beta}_i$ and a $\sigma_{\hat\beta_i}^2$, use maximum likelihood estimation to find a point estimate for $\beta$.
 
-Keeping only the pieces that depend on $\beta$, 
-$$L\propto\prod_{i}^{n_{\textrm{studies}}}e^{\frac{1}{2}(\frac{\hat\beta_i-\beta}{\sigma_{\hat\beta_i}})^2}\implies \log(L)=\sum_{i}^{n_{\textrm{studies}}}\frac{1}{2}\left(\frac{\hat\beta_i-\beta}{\sigma_{\hat\beta_i}}\right)^2$$
+Since the standard errors are known, we can keep only the pieces that depend on $\beta$, 
+$$L\propto\prod_{i==1}^{n_{\textrm{studies}}}e^{\frac{1}{2}(\frac{\hat\beta_i-\beta}{\sigma_{\hat\beta_i}})^2}\implies \log(L)=\sum_{i=1}^{n_{\textrm{studies}}}\frac{1}{2}\left(\frac{\hat\beta_i-\beta}{\sigma_{\hat\beta_i}}\right)^2$$
 
-Taking the derivative and setting it equal to 0 shows $$0=\sum_{i}^{n_{\textrm{studies}}}\left(\frac{\hat\beta_i-\beta}{\sigma_{\hat\beta_i}}\right)=\sum_{i}^{n_{\textrm{studies}}}\left(\frac{\hat\beta_i}{\sigma_{\hat\beta_i}}\right)-\beta\sum_{i}^{n_{\textrm{studies}}}\left(\frac{1}{\sigma_{\hat\beta_i}}\right)\implies \beta = \frac{\sum_{i}^{n_{\textrm{studies}}}\left(\frac{\hat\beta_i}{\sigma_{\hat\beta_i}}\right)}{\sum_{i}^{n_{\textrm{studies}}}\left(\frac{1}{\sigma_{\hat\beta_i}}\right)}$$
+Taking the derivative and setting it equal to 0 shows $$0=\sum_{i=1}^{n_{\textrm{studies}}}\left(\frac{\hat\beta_i-\hat\beta}{\sigma_{\hat\beta_i}}\right)=\sum_{i=1}^{n_{\textrm{studies}}}\left(\frac{\hat\beta_i}{\sigma_{\hat\beta_i}}\right)-\hat\beta\sum_{i=1}^{n_{\textrm{studies}}}\left(\frac{1}{\sigma_{\hat\beta_i}}\right)\implies \hat\beta = \frac{\sum_{i=1}^{n_{\textrm{studies}}}\left(\frac{\hat\beta_i}{\sigma_{\hat\beta_i}}\right)}{\sum_{i=1}^{n_{\textrm{studies}}}\left(\frac{1}{\sigma_{\hat\beta_i}}\right)}$$
 
-3. The code below simulates data from one of two scenarios.  In the first scenario, there is a true effect $\beta$ that holds in all the studies.  The only thing that differs by study is the sample size.  Therefore, for study $i$, the $j^{th}$ observation is given by $Y_{ij}=\beta_0 + \beta X_{ij}+\epsilon_{ij}$ with $\epsilon_{ij}\sim\mathcal{N}(0, \sigma_Y^2)$.  In the second scenario, the effect in study $i$ is $\beta_i\sim\mathcal{N}(\beta, \sigma_\beta^2)$.  Then, for study $i$, the $j^{th}$ observation is given by $Y_{ij}=\beta_0 + \beta_i X_{ij}+\epsilon_{ij}$ with $\epsilon_{ij}\sim\mathcal{N}(0, \sigma_Y^2)$.
+3. Find the distribution of this $\hat{\beta}$ assuming the studies are independent.
+
+Each of the $\hat{\beta}_i$s are Normal, so $\hat{\beta}$ has a Normal distribution. Its mean is $$E(\hat{\beta})=\frac{\sum_{i=1}^{n_{\textrm{studies}}}\left(\frac{E(\hat\beta_i)}{\sigma_{\hat\beta_i}}\right)}{\sum_{i=1}^{n_{\textrm{studies}}}\left(\frac{1}{\sigma_{\hat\beta_i}}\right)}=\beta$$
+Its variance is
+$$\textrm{Var}(\hat{\beta})=\frac{\sum_{i=1}^{n_{\textrm{studies}}}\left(\frac{\textrm{Var}(\hat\beta_i)}{\sigma_{\hat\beta_i}^2}\right)}{\left(\sum_{i=1}^{n_{\textrm{studies}}}\left(\frac{1}{\sigma_{\hat\beta_i}}\right)\right)^2}=\frac{n_{\textrm{studies}}}{{\left(\sum_{i=1}^{n_{\textrm{studies}}}\left(\frac{1}{\sigma_{\hat\beta_i}}\right)\right)^2}}$$
+Therefore, $$\hat{\beta}\sim\mathcal{N}\left(\beta, \frac{n_{\textrm{studies}}}{{\left(\sum_{i=1}^{n_{\textrm{studies}}}\left(\frac{1}{\sigma_{\hat\beta_i}}\right)\right)^2}}\right)$$
+
+4. The code below simulates data from the following scenarios:
+- In the first scenario, there is a true effect $\beta$ that holds in all the studies. The only thing that differs by study is the sample size. Therefore, for study $i$, the $j^{th}$ observation is given by $Y_{ij}=\beta_0 + \beta X_{ij}+\epsilon_{ij}$ with $\epsilon_{ij}\sim\mathcal{N}(0, \sigma_Y^2)$.
+- In the second scenario, the effect in study $i$ is $\beta_i\sim\mathcal{N}(\beta, \sigma_\beta^2)$. Then, for study $i$, the $j^{th}$ observation is given by $Y_{ij}=\beta_0 + \beta_i X_{ij}+\epsilon_{ij}$ with $\epsilon_{ij}\sim\mathcal{N}(0, \sigma_Y^2)$.
 
 We will consider 5 methods:
 
@@ -275,7 +310,7 @@ We will consider 5 methods:
 - Combine all the data points and run a linear model with `ys ~ xs`
 - Combine all the data points and run a linear model with `ys ~ xs + xs:as.factor(study_id)`
 
-Interpret the outputs: how do the methods perform on the two scenarios? (The code below should be cached and takes a while to run, so don't change it unnecessarily.)
+Interpret the outputs: how do the methods perform on the two scenarios?
   
 ```{r, warning=F, cache=T, echo=F}
 set.seed(139)
@@ -329,10 +364,6 @@ for (nsim in 1:nsims) {
   stats_df[nrow(stats_df), 4] = "Fixed effects no interactions"
   
   output_df[nsim, ] = stats_df[n_studies + (1:5), 1]
-  
-  # if (nsim %% 100 == 0) {
-  #   print(paste0(nsim/nsims * 100, "% done"))
-  # }
 }
 
 output_df = melt(output_df)
@@ -343,19 +374,19 @@ output_df$Method <- case_when(output_df$Method == 1 ~ "1. Likelihood",
                               output_df$Method == 4 ~ "4. Fixed effects with interaction",
                               output_df$Method == 5 ~ "5. Fixed effects no interaction")
 
-#ggplot(output_df, aes(x=Beta, fill=Method)) + 
-#  geom_histogram(alpha=0.5, position="identity", binwidth = 0.1)
-
 comparison_df = data.frame(matrix(nrow = 5, ncol = 4))
 comparison_df[, 1] = c("Likelihood", "Raw means", "Linear mixed effects", "Fixed effects with interaction", "Fixed effects no interaction")
-comparison_df[, 2] = as.numeric(by(output_df$Beta, output_df$Method, mean))
+comparison_df[, 2] = as.numeric(by(output_df$Beta, output_df$Method, mean)) - true_effect
 comparison_df[, 3] = as.numeric(by(output_df$Beta, output_df$Method, sd))
 comparison_df[, 4] = c(sum((output_df$Beta[output_df$Method=="1. Likelihood"] - true_effect)^2),
                        sum((output_df$Beta[output_df$Method=="2. Raw means"] - true_effect)^2),
                        sum((output_df$Beta[output_df$Method=="3. Linear mixed effects"] - true_effect)^2),
                        sum((output_df$Beta[output_df$Method=="4. Fixed effects with interaction"] - true_effect)^2),
                        sum((output_df$Beta[output_df$Method=="5. Fixed effects no interaction"] - true_effect)^2)) / nsims
-colnames(comparison_df) <- c("Method", "Mean", "SD", "MSE")
+
+comparison_df[,2:4] <- apply(comparison_df[,2:4], 2, round, digits=3)
+
+colnames(comparison_df) <- c("Method", "Bias", "SE", "MSE")
 
 comparison_df
 ```
@@ -415,10 +446,6 @@ for (nsim in 1:nsims) {
   stats_df[nrow(stats_df), 4] = "Fixed effects no interactions"
   
   output_df[nsim, ] = stats_df[n_studies + (1:5), 1]
-  
-  # if (nsim %% 100 == 0) {
-  #   print(paste0(nsim/nsims * 100, "% done"))
-  # }
 }
 
 output_df = melt(output_df)
@@ -429,84 +456,73 @@ output_df$Method <- case_when(output_df$Method == 1 ~ "1. Likelihood",
                               output_df$Method == 4 ~ "4. Fixed effects with interaction",
                               output_df$Method == 5 ~ "5. Fixed effects no interaction")
 
-#ggplot(output_df, aes(x=Beta, fill=Method)) + 
-#  geom_histogram(alpha=0.5, position="identity", binwidth = 0.1)
-
 comparison_df = data.frame(matrix(nrow = 5, ncol = 4))
 comparison_df[, 1] = c("Likelihood", "Raw means", "Linear mixed effects", "Fixed effects with interaction", "Fixed effects no interaction")
-comparison_df[, 2] = as.numeric(by(output_df$Beta, output_df$Method, mean))
+comparison_df[, 2] = as.numeric(by(output_df$Beta, output_df$Method, mean)) - true_effect
 comparison_df[, 3] = as.numeric(by(output_df$Beta, output_df$Method, sd))
 comparison_df[, 4] = c(sum((output_df$Beta[output_df$Method=="1. Likelihood"] - true_effect)^2),
                        sum((output_df$Beta[output_df$Method=="2. Raw means"] - true_effect)^2),
                        sum((output_df$Beta[output_df$Method=="3. Linear mixed effects"] - true_effect)^2),
                        sum((output_df$Beta[output_df$Method=="4. Fixed effects with interaction"] - true_effect)^2),
                        sum((output_df$Beta[output_df$Method=="5. Fixed effects no interaction"] - true_effect)^2)) / nsims
-colnames(comparison_df) <- c("Method", "Mean", "SD", "MSE")
+
+comparison_df[,2:4] <- apply(comparison_df[,2:4], 2, round, digits=3)
+
+colnames(comparison_df) <- c("Method", "Bias", "SE", "MSE")
 
 comparison_df
 ```
 
-The fixed effects with interactions is clearly the worst model: it actually just takes study 1 as the estimated effect and fits adjustments for the rest of the studies.  The raw means also does rather poorly with a higher standard error than the other methods.  Fixed effects with no interactions does the best when all the participants in all the studies are from the same distribution, but its standard error is higher when there are by-study differences.  Linear mixed effects performs very well in both scenarios, and the likelihood method also does rather well considering that it doesn't have any of the original data points.
-  
-4. Under the random slopes model specified above, given a new $X$ from a new study, find the probability that its associated $Y$ value will be less than $\tau$.
+The fixed effects with interactions is clearly the worst model: it actually just takes study 1 as the estimated effect and fits adjustments for the rest of the studies. The raw means also does rather poorly with a higher standard error than the other methods. Fixed effects with no interactions does the best when all the participants in all the studies are from the same distribution, but its standard error is higher when there are by-study differences. Linear mixed effects performs very well in both scenarios, and the likelihood method also does quite well.
+
+5. Under the random slopes model specified above but assuming an intercept of 0, given a new $X$ from a new study, find the probability that its associated $Y$ value will be less than $\tau$. You can leave your answer as a double integral.
 
 Conditioning on the group $\beta_i$ and applying the Law of Total Probability,
 
 $$\begin{aligned}
-P(Y<\tau)&=\int_{-\infty}^\infty P(Y<\tau|\beta_i)P(\beta_i)d\beta_i\\
-&= \int_{-\infty}^\infty \int_{-\infty}^\tau\frac{1}{\sqrt{2\pi}\sigma_Y}e^{-\frac{1}{2}\left(\frac{y-\beta_i}{\sigma_Y}\right)^2}\frac{1}{\sqrt{2\pi}\sigma_\beta}e^{-\frac{1}{2}\left(\frac{\beta_i-\beta}{\sigma_\beta}\right)^2}dyd\beta_i
+P(Y<\tau|X)&=\int_{-\infty}^\infty P(Y<\tau|\beta_i, X)P(\beta_i)d\beta_i\\
+&= \int_{-\infty}^\infty \int_{-\infty}^\tau\frac{1}{\sqrt{2\pi}\sigma_Y}e^{-\frac{1}{2}\left(\frac{y-X\beta_i}{\sigma_Y}\right)^2}\frac{1}{\sqrt{2\pi}\sigma_\beta}e^{-\frac{1}{2}\left(\frac{\beta_i-\beta}{\sigma_\beta}\right)^2}dyd\beta_i
 \end{aligned}$$
 
 \newpage
 
 # Crops continued
 
-This question will deal with a data set of country-level statistics from [this source](https://www.gu.se/en/quality-government/qog-data/data-downloads/standard-dataset) with an explanation of the data encoding found [here](https://www.qogdata.pol.gu.se/data/codebook_std_jan22.pdf).  
+These problems will deal with a dataset of country-level statistics from [UNdata](https://data.un.org/), [Varieties of Democracy](https://v-dem.net/data/the-v-dem-dataset/), and the [World Bank](https://data.worldbank.org/indicator/AG.LND.PRCP.MM).
 
-A few useful columns:
+```{r, cache=T, warning=FALSE, echo=F}
+countries <- read.csv("data/country_stats.csv", check.names = F)
+countries_2010 <- countries[countries$Year == 2010,]
 
-- `mad_gdppc`: GDP per capita
-- `wdi_araland`: Arable land (\% of land area)
-- `wdi_precip`: Average annual precipitation (mm per year)
-- `ht_region`: Country's region of the world: Eastern Europe (1), Latin America (2), North Africa & the Middle East (3), Sub-Saharan Africa (4), Western Europe and North America (5), East Asia (6), South-East Asia (7), South Asia (8), Pacific (9), Caribbean (10)
-
-```{r, include=F}
-countries <- read.csv("data/countries.csv")
+colnames(countries_2010) <- case_when(colnames(countries_2010) == "GDP per capita (US dollars)" ~ "GDP",
+                                      colnames(countries_2010) == "Arable land (% of total land area)" ~ "Arable",
+                                        colnames(countries_2010) == "Precipitation (mm)" ~ "Precipitation",
+                                        TRUE ~ colnames(countries_2010)
+                                        )
 ```
 
-1. Fit a quadratic regression model to predict `wdi_araland` from `wdi_precip`, using `log(mad_gdppc)` as a weight to account for the fact that wealthier countries might have more accurate crop tracking technology.  Call this `lm_weight`.
+1. The following shows a quartic regression model to predict the percent of arable land from the annual precipitation. The weighted model is weighted by the log GDP per capita (the idea being that wealthier countries might have better measurement and reporting). The mixed effects model uses random intercepts for each world region (e.g., because temperature can differ by region). Interpret the differences.
 
-```{r}
-lm_weight <- lm(wdi_araland~poly(wdi_precip, 2, raw = TRUE), countries, weight=log(mad_gdppc))
-```
+```{r, cache=T, echo=F, fig.width=6, fig.height=3.5, fig.align='center', warning=F}
+lm_weight <- lm(Arable~poly(Precipitation, 4, raw = TRUE), countries_2010, weight=log(GDP))
 
-2. Use the `lmer` function to fit a mixed effects model with a random intercept based on the country's `ht_region`, and use the argument `weight=log(mad_gdppc)` here as well.  Call this `lmer1`.
+lmer1 <- lmer(Arable~poly(Precipitation, 4, raw = TRUE) + (1 | Region), 
+              countries_2010, weight=log(GDP))
 
-```{r}
-countries$ht_region <- as.factor(countries$ht_region)
-lmer1 <- lmer(wdi_araland ~ poly(wdi_precip, 2, raw = TRUE) + (1 | ht_region), 
-              countries, weight=log(mad_gdppc))
-```
-3. Use your models to plot the estimated relationship between precipitation and arable land.
-
-```{r, warning=F, echo=F}
-# Due to my loathing of base R plots, this chunk of code is devoted to creating dummy ranges 
-# of precipitation values so that each model can show a curve
-
-dummy_x <- seq(min(countries$wdi_precip, na.rm = T), max(countries$wdi_precip, na.rm=T), 1)
-lm_unweighted <- lm(wdi_araland~poly(wdi_precip, 2, raw = TRUE), countries)
-lm_unweighted_pred <- predict(lm_unweighted, newdata=data.frame(wdi_precip = dummy_x))
-lm_weighted_pred <- predict(lm_weight, newdata=data.frame(wdi_precip = dummy_x))
-countries_subset <- countries[!is.na(countries$wdi_precip) & 
-                                !is.na(countries$wdi_araland) & 
-                                !is.na(countries$mad_gdppc),]
+dummy_x <- seq(min(countries_2010$Precipitation, na.rm = T), max(countries_2010$Precipitation, na.rm=T), 1)
+lm_unweighted <- lm(Arable~poly(Precipitation, 4, raw = TRUE), countries_2010)
+lm_unweighted_pred <- predict(lm_unweighted, newdata=data.frame(Precipitation = dummy_x))
+lm_weighted_pred <- predict(lm_weight, newdata=data.frame(Precipitation = dummy_x))
+countries_subset <- countries_2010[!is.na(countries_2010$Precipitation) & 
+                                !is.na(countries_2010$Arable) & 
+                                !is.na(countries_2010$GDP),]
 
 # Trying to get the region weighting reasonable
-lmer_pred <- predict(lmer1, newdata=data.frame(wdi_precip = rep(dummy_x, 9), 
-                                               ht_region = rep(as.factor(c(1:8, 10)), each=length(dummy_x))
+lmer_pred <- predict(lmer1, newdata=data.frame(Precipitation = rep(dummy_x, length(unique(countries_subset$Region))), 
+                                               Region = rep(unique(countries_subset$Region), each=length(dummy_x))
                                                ))
-lmer_pred <- matrix(lmer_pred, ncol = 9)
-lmer_pred <- as.vector(lmer_pred %*% as.matrix(unname(table(countries_subset$ht_region)/sum(table(countries_subset$ht_region)))[c(1:8, 10)]))
+lmer_pred <- matrix(lmer_pred, ncol = length(unique(countries_subset$Region)))
+lmer_pred <- as.vector(lmer_pred %*% as.matrix(unname(table(countries_subset$Region)/sum(table(countries_subset$Region)))))
 
 dummy_df <- data.frame(dummy_x, "Unweighted linear model" = lm_unweighted_pred, 
                        "Weighted linear model" = lm_weighted_pred, 
@@ -514,11 +530,11 @@ dummy_df <- data.frame(dummy_x, "Unweighted linear model" = lm_unweighted_pred,
 dummy_df <- melt(dummy_df, id.vars="dummy_x")
 colnames(dummy_df) = c("dummy_x", "Model", "value")
 
-ggplot(countries, aes(x=wdi_precip, y=wdi_araland)) + 
+ggplot(countries_2010, aes(x=Precipitation, y=Arable)) + 
   geom_point() + 
   geom_line(data=dummy_df, aes(y=value, x=dummy_x, col=Model), size=0.5) + 
   xlab("Average annual precipitation (mm per year)") + 
-  ylab("Arable land (% of land area)")
+  ylab("Arable land (% of land area)") + 
+  theme_bw()
 ```
-There's not much to interpret here: both of the weighted models have fitted curves slightly higher than the unweighted model (plausibly suggesting that wealthier countries might just have more arable land given the same amount of precipitation).  However, the curves are all quite similar and have maxima close to each other.
-
+The unweighted and weighted linear models are very similar. The random intercepts model predicts a lower proportion of arable land across all precipitations. All models look roughly similar with similar precipitations at which arable land is maximized.

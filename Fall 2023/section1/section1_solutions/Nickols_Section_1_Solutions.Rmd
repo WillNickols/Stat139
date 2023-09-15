@@ -85,16 +85,28 @@ $$\bar{X}\sim \mathcal{N}\left(0, \frac{n+ \rho(2n - 2)}{n^2}\right)$$
 We can see that the only place we used $\textrm{Var}(X_i)$ was in the last step, so we can just plug in $\sigma^2$ instead to get
 $$\bar{X}\sim \mathcal{N}\left(0, \sigma^2\left(\frac{n+ \rho(2n - 2)}{n^2}\right)\right)$$
 
-5. What is the approximate distribution for large $n$?
+5. Show that the variance can be written as $\vv{c}^T\mathbf{\Sigma}\vv{c}$ where $\vv{c}$ is a vector of $1/n$.
+
+$$\vv{c}^T\mathbf{\Sigma}\vv{c}=\vv{c}^T\begin{bmatrix} 
+    1 + \rho \\
+    1 + 2\rho\\
+    \vdots\\
+    1 + 2\rho\\
+    1 + \rho \\
+    \end{bmatrix}\cdot \frac{1}{n}=\frac{1}{n^2}\left(2(1+\rho)+(n-2)(1+2\rho)\right)=\frac{n+ \rho(2n - 2)}{n^2}$$
+    
+In general, this operation finds the variance of a mean given a known covariance matrix.
+
+6. What is the approximate distribution for large $n$?
 
 As $n\rightarrow\infty$, $$\frac{n+ \rho(2n - 2)}{n^2}\rightarrow \frac{n+2\rho n}{n^2}\implies \bar{X}\dot{\sim} \mathcal{N}\left(0, \frac{1 + 2\rho}{n}\right)$$
 
-6. By comparing the distributions in (1) and (5), determine the effective sample size $n'$ when there are $n$ random variables with the correlation structure of (2). That is, is you had $n'$ independent Normals rather than $n$ dependent Normals, what would $n'$ have to be so that the variances of the sample means are the same?
+7. By comparing the distributions in (1) and (6), determine the effective sample size $n'$ when there are $n$ random variables with the correlation structure of (2). That is, if you had $n'$ independent Normals rather than $n$ dependent Normals, what would $n'$ have to be so that the variances of the sample means are the same?
 
 We need $n'$ such that:
 $$\frac{1}{n'}=\frac{1 + 2\rho}{n}\implies n'=\frac{n}{1+2\rho}$$
 
-7. Here is a plot of how the effective sample size changes with $\rho$.
+8. Here is a plot of how the effective sample size changes with $\rho$.
 
 ```{r, echo=F, fig.width=4, fig.height=3, fig.align='center', cache=T}
 rhos <- seq(0, 0.5, 0.001)
@@ -145,7 +157,7 @@ variances_out
 ```
 This simulation is generating many draws from three scenarios: (1) $n$ independent observations, (2) $n'$ independent observations, and (3) $n$ dependent observations. For each draw, it computes the sample mean, stores it, and then finds the variance of the sample mean. As expected, the dependent $n$ sample mean variance comes out very close to the independent $n'$ sample mean variance but quite a bit higher than the independent $n$ sample mean variance.
 
-8. You might have noticed that the plot of effective sample size versus correlation stops at a correlation of 0.5. Correlation ranges from -1 to 1, but our set-up actually doesn't work if $\rho>0.5$ and $n$ is large enough. To have a valid $\mathbf{\Sigma}$ matrix, it must satisfy the property that $\vv{x}^T\mathbf{\Sigma} \vv{x}\geq 0$ for all $\vv{x}\in\mathbb{R}^n$ (that is, it must be positive, semi-definite). Show that for $\rho>0.5$, choosing the vector $\vv{x}=(-1, 1, -1, ..., -1)^T$ implies $\vv{x}^T\mathbf{\Sigma} \vv{x}<0$ if $n$ is large enough, violating the requirements for $\mathbf{\Sigma}$. (For simplicity, let $n$ be odd.)
+9. You might have noticed that the plot of effective sample size versus correlation stops at a correlation of 0.5. Correlation ranges from -1 to 1, but our set-up actually doesn't work if $\rho>0.5$ and $n$ is large enough. To have a valid $\mathbf{\Sigma}$ matrix, it must satisfy the property that $\vv{x}^T\mathbf{\Sigma} \vv{x}\geq 0$ for all $\vv{x}\in\mathbb{R}^n$ (that is, it must be positive, semi-definite). Show that for $\rho>0.5$, choosing the vector $\vv{x}=(-1, 1, -1, ..., -1)^T$ implies $\vv{x}^T\mathbf{\Sigma} \vv{x}<0$ if $n$ is large enough, violating the requirements for $\mathbf{\Sigma}$. (For simplicity, let $n$ be odd.)
 
 Let $\vv{x}=(-1, 1, -1, ..., -1)^T$. Then, 
 $$\mathbf{\Sigma} \vv{x}=\begin{bmatrix} 
@@ -166,17 +178,17 @@ Since $0.5<\rho<1$, $0<-2(-1+\rho)<1$ which means the first term is at most 1, b
 
 The following problems are intended as a review of Stat 111. We'll prove that the student-$t$ distribution converges to the Normal distribution as its degrees of freedom increase and then analyze this convergence. This fact is useful for large $n$ approximations.
 
-1. Let $T_n\sim t_n$, so $T_n$ can be represented as $$T_n=\frac{Z}{\sqrt{V/n}}, Z\sim\mathcal{N}(0,1), V\sim\chi^2_n$$ which also means $V$ can be represented as $V=\sum_{i=1}^n Z_i^2$ for $Z_i\sim\mathcal{N}(0,1)$. Show that $V/n\xrightarrow{p}1$.
+1. Let $T_n\sim t_n$, so $T_n$ can be represented as $$T_n=\frac{Z}{\sqrt{V_n/n}}, Z\sim\mathcal{N}(0,1), V_n\sim\chi^2_n$$ which also means $V_n$ can be represented as $V_n=\sum_{i=1}^n Z_i^2$ for $Z_i\sim\mathcal{N}(0,1)$. Show that $V_n/n\xrightarrow{p}1$.
 
 $E(Z_i^2)=\textrm{Var}(Z_i)+(E(Z_i))^2=1$, so by the law of large numbers, $\frac{1}{n}\sum_{i=1}^nZ_i^2\rightarrow E(Z_1^2)=1$
 
-2. What tells us that if $V/n\xrightarrow{p} 1$, $\frac{1}{\sqrt{V/n}}\xrightarrow{p} 1$?
+2. What tells us that if $V_n/n\xrightarrow{p} 1$, $\frac{1}{\sqrt{V_n/n}}\xrightarrow{p} 1$?
 
-Continuous mapping theorem
+Continuous mapping theorem: if $g$ is a continuous function and $\hat{\theta}\xrightarrow{p}\theta$, $g(\hat{\theta})\xrightarrow{p}g(\theta)$.
 
-3. What tells us that if $Z\sim\mathcal{N}(0,1)$ and $\frac{1}{\sqrt{V/n}}\xrightarrow{p} 1$, $\frac{Z}{\sqrt{V/n}}\xrightarrow{d} \mathcal{N}(0,1)$
+3. What tells us that if $Z\sim\mathcal{N}(0,1)$ and $\frac{1}{\sqrt{V_n/n}}\xrightarrow{p} 1$, $\frac{Z}{\sqrt{V_n/n}}\xrightarrow{d} \mathcal{N}(0,1)$
 
-Slutsky's Theorem
+Slutsky's Theorem: If $X_n\xrightarrow{d}X$ and $Y_n\xrightarrow{p}c$, $X_nY_n\xrightarrow{d}cX$.
 
 4. What does this mean about the distribution of $T_n$ as $n\rightarrow\infty$?
 
@@ -184,7 +196,7 @@ $$T_n\xrightarrow{d}\mathcal{N}(0,1)$$
 
 5. Do the centers or the tails converge faster?
 
-```{r, echo=F, fig.width=6, fig.height=3, fig.align='center', cache=T}
+```{r, echo=F, fig.width=6, fig.height=3, fig.align='center', cache=T, warning=F}
 dfs = seq(1, 30, 0.001)
 ratios <- function(dfs, point) {
   return((pt(point, dfs, lower.tail = F)) / pnorm(point, lower.tail = F))
@@ -193,9 +205,9 @@ ggplot(data.frame(x=dfs), aes(x=x)) +
   geom_function(fun = ratios, aes(color = "0"), args = list(point = 0)) +
   geom_function(fun = ratios, aes(color = "1"), args = list(point = 1)) +
   geom_function(fun = ratios, aes(color = "2"), args = list(point = 2)) +
-  geom_function(fun = ratios, aes(color = "2.5"), args = list(point = 2.5)) +
+  geom_function(fun = ratios, aes(color = "3"), args = list(point = 3)) +
   theme_bw() + 
-  scale_color_manual(values = c("0" = "black", "1" = "darkred", "2" = "red", "2.5" = "pink")) +
+  scale_color_manual(values = c("0" = "black", "1" = "darkred", "2" = "red", "3" = "pink")) +
   labs(color = "Tail mass beyond: ") + 
   xlab("Degrees of freedom") + 
   xlim(c(1,30)) + 
@@ -203,7 +215,7 @@ ggplot(data.frame(x=dfs), aes(x=x)) +
   ylab("t tail mass/Normal tail mass")
 ```
 
-The centers converge much faster. The plot is showing the ratio of the student-$t$ and standard Normal distribution masses beyond a particular value. We can see that even at $n=30$, usually considered a good sample size, the mass above 2.5 in a student-$t$ distribution is about 30\% larger than the mass above 2.5 for a standard Normal.
+The centers converge much faster. The plot is showing the ratio of the student-$t$ and standard Normal distribution masses beyond a particular value. We can see that even at $n=30$, usually considered a good sample size, the mass above 3 in a student-$t$ distribution is about twice that of a standard Normal.
 
 6. What does this imply about generating p-values from a Normal approximation to the student-$t$ distribution?
 
@@ -236,7 +248,7 @@ pop2 <- countries[countries$Year == 2010 &
 round(c(summary(pop2), "SD" = sd(pop2)), 2)
 ```
 
-The distributions are similar with close means, medians, minimums, and 1st quartiles. They both have considerable right skews with a means nearly double the medians, and their tails differ with Eastern African countries having a higher third quartile but lower maximum (Nigeria vs. Ethiopia).
+The distributions are similar with close means, medians, minimums, and 1st quartiles. They both have considerable right skews with means nearly double the medians, and their tails differ with Eastern African countries having a higher third quartile but lower maximum (Nigeria vs. Ethiopia).
 
 2. Compare the distributions. Would you expect to see a significant difference in a $t$-test?
 
@@ -264,31 +276,7 @@ grid.arrange(plot1, plot2, ncol=2, widths=c(1,1.2))
 
 Probably not: The means look about the same, and the standard deviations are large enough that even dividing by the square root of the sample size still yields a standard error of the mean larger than the difference in means.
 
-3. Perform a formal $t$-test for the difference in population means between Western African and Eastern African countries.
-
-```{r, echo=F}
-west_african <- pop1
-east_african <- pop2
-t.test(west_african, east_african)
-```
-Let $\mu_0$ be the mean population of countries in Western Africa and $\mu_1$ be the mean population of countries in Eastern Africa. We are testing $H_0$: $\mu_0=\mu_1$ vs $H_a:$ the two means are different. We get a $t$-statistic of $0.12$ with $24.7$ degrees of freedom for a two-sided $t$-test, which corresponds to a p-value of $0.90>0.05$, so we fail to reject the null that there is a difference in mean populations. (The confidence interval for the differences in means is $(-20.0, 22.5)$, which includes 0, consistent with the $t$-test.)
-
-4. Perform a formal $z$-test for the difference in the proportions of the populations that are nurses or midwives in the US versus the UK in 2010.
-
-```{r, echo=F}
-us_nurses_midwives <- countries$`Health personnel: Nurses and midwives (number)`[
-  countries$Country == "United States of America" & countries$Year ==  2010]
-us_pop <- countries$`Population mid-year estimates (millions)`[
-  countries$Country == "United States of America" & countries$Year ==  2010] * 1000000
-uk_nurses_midwives <- countries$`Health personnel: Nurses and midwives (number)`[
-  countries$Country == "United Kingdom" & countries$Year ==  2010]
-uk_pop <- countries$`Population mid-year estimates (millions)`[
-  countries$Country == "United Kingdom" & countries$Year ==  2010] * 1000000
-prop.test(c(us_nurses_midwives, uk_nurses_midwives), c(us_pop, uk_pop), correct = F)
-```
-Let $p_{\textrm{US}}$ be the proportion of the population that is nurses or midwives in the US and $p_{\textrm{UK}}$ be the equivalent proportion in the UK. We want to test $H_0: p_{\textrm{US}}=p_{\textrm{UK}}$ vs. $H_a:$ they are not equal. We get a $z$-statistic of $\sqrt{57941}=240.7$ which gives a p-value less than $2.2\times10^{-16}$, so we reject the null and conclude that the proportion of the population that is nurses and midwives is significantly higher in the US.
-
-5. Varieties of Democracy is a group of researchers that estimates a democracy score for each country each year based on a large compilation of data. Note any trends in the democracy index.
+3. Varieties of Democracy is a group of researchers that estimates a democracy score for each country each year based on a large compilation of data. Note any trends in the democracy index.
 
 ```{r, echo=F, fig.width=6, fig.height=3, fig.align='center', cache=T, warning=F}
 ggplot(countries[countries$Country %in% c("United States of America",
@@ -300,5 +288,5 @@ ggplot(countries[countries$Country %in% c("United States of America",
   theme_bw()
 ```
 
-The United States' index has consistently been well above Russia's. The US index hovers around 0.85 while Russia's has consistently declined. (The gaps are because I merged these scores with the UN data which were missing a few years.)
+The United States' index has consistently been well above Russia's. The US index has hovered around 0.85 while Russia's has consistently declined. (The gaps are because I merged these scores with the UN data which were missing a few years.)
 

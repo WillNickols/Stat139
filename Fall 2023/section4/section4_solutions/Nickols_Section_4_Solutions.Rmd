@@ -33,7 +33,132 @@ Make sure to sign in on the [google form](https://forms.gle/xm1DfzuZFNcWU6fH8) (
 Pset 3 due Friday 10/6
 
 # Introductions
-- One question or thought related to lecture last week (Inference, linear model assumptions, and intro to multiple regression)
+- One question or thought related to lecture last week (Correlation, simple regression, inference)
+
+```{r, echo=F, warning=F, message=F, cache=F}
+list.of.packages <- c("ggplot2", "gridExtra")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+
+library(ggplot2)
+library(gridExtra)
+```
+
+# Slope independent of outcome mean
+
+In this problem, we'll show that the slope in a linear regression ($\hat{\beta}_1$) is independent of the mean outcome ($\bar{Y}$). Suppose we have pairs $(X_i,Y_i)$ for $i\in\{1,...,n\}$.
+
+1. Recall that in a simple linear regression we assume $Y_i=\beta_0+\beta_1 X_i + \epsilon_i$ with $X_i$ known and $\epsilon_i\sim\mathcal{N}(0,\sigma^2)$. The vector $(\bar{Y}, Y_1-\bar{Y}, Y_2-\bar{Y}, ..., Y_n-\bar{Y})^T$ has a multivariate Normal distribution. Find the covariance of $\bar{Y}$ and $Y_i-\bar{Y}$.
+
+$$\begin{aligned}\textrm{Cov}(\bar{Y},Y_i-\bar{Y})&=\textrm{Cov}(\bar{Y},Y_i)-\textrm{Cov}(\bar{Y}, \bar{Y})\\
+&=\textrm{Cov}(Y_i/n,Y_i)-\textrm{Var}(\bar{Y})\\
+&=\frac{1}{n}\textrm{Var}(Y_i)-\textrm{Var}\left(\frac{1}{n}\sum_{i=1}^n \beta_0-\beta_1X_i+\epsilon_i\right)\\
+&=\frac{\sigma^2}{n}-\frac{1}{n^2}\sum_{i=1}^n \textrm{Var}(\epsilon_i)\\
+&=0
+\end{aligned}$$
+
+2. What does this imply about $\bar{Y}$ and all the $Y_i-\bar{Y}$?
+
+$\bar{Y}$ is independent of all the $Y_i-\bar{Y}$ since uncorrelated implies independent in a multivarite Normal distribution.
+
+3. What does this say about the relationship between $\bar{Y}$ and $\hat{\beta}_1$? Recall that $$\hat{\beta_1}=\frac{\sum_{i=1}^n(X_i-\bar{X})(Y_i-\bar{Y})}{\sum_{i=1}^n(X_i-\bar{X})^2}$$
+
+$\hat{\beta}_1$ is just a function of the $(Y_i-\bar{Y})$s, so it is also independent of $\bar{Y}$.
+
+\newpage
+
+# Rule of thumb
+
+Suppose we have $n$ pairs of $(X_i, Y_i)$ and we regress $Y$ on $X$ to get a slope $\hat{\beta}_1$ and $X$ on $Y$ to get a slope $\hat{\beta}_1'$. At first glance, it might seem like the $\hat{\beta}_1=1/\hat{\beta}_1'$. However, as you can see in the plots below, this is wrong.
+
+```{r, echo=F, fig.width=6, fig.height=3, fig.align='center', cache=T, warning=F}
+set.seed(139)
+n <- 500
+beta_0 <- 2
+beta_1 <- 0.5
+x <- rnorm(n, 10, 5)
+y <- beta_0 + beta_1 * x + rnorm(n, 0, 3)
+lm1 <- summary(lm(y ~ x))
+plot1 <- ggplot(data.frame(x, y), aes(x=x, y=y)) + 
+  geom_point() + 
+  geom_smooth(method = 'lm', formula = 'y ~ x') + 
+  theme_bw() + 
+  annotate(
+    "text", label = paste0("Slope: ", round(lm1$coefficients[2,1], 3), "\nR2: ", round(lm1$r.squared, 3)),
+    x = -2, y = 25, size = 4, colour = "red"
+  ) + 
+  coord_equal() + 
+  xlim(-8, 28) + 
+  ylim(-8, 28)
+
+lm2 <- summary(lm(x ~ y))
+plot2 <- ggplot(data.frame(x, y), aes(x=y, y=x)) + 
+  geom_point() + 
+  geom_smooth(method = 'lm', formula = 'y ~ x') + 
+  theme_bw() + 
+  xlab("y") + 
+  ylab("x") +
+  annotate(
+    "text", label = paste0("Slope: ", round(lm2$coefficients[2,1], 3), "\nR2: ", round(lm2$r.squared, 3)),
+    x = -2, y = 25, size = 4, colour = "red"
+  ) + 
+  coord_equal() + 
+  xlim(-8, 28) + 
+  ylim(-8, 28)
+
+grid.arrange(plot1, plot2, ncol=2)
+```
+
+1. Why is this wrong?
+
+Because we are only trying to minimize the vertical residuals, we end up with non-reciprocal slopes. You can imagine a case where $X$ and $Y$ are independent, so both slopes would be 0, but clearly these are not reciprocals. This can also be viewed as a case of regression to the mean in which an extreme $X$ value predicts a $Y$ value that's not quite as extreme.
+
+2. In the rest of the problem, we'll try to find the proper relationship between the two slopes. Recall that when regressing $Y$ on $X$, we have
+$$R^2=1-\frac{\sum_{i=1}^n(Y_i-\hat{Y_i})^2}{\sum_{i=1}^n(Y_i-\bar{Y})^2}$$
+Consider our simple regression with the estimators $$\hat{\beta}_1=\frac{\sum_{i=1}^n(Y_i-\bar{Y})(X_i-\bar{X})}{\sum_{i=1}^n(X_i-\bar{X})^2}, \;\;\;\hat{\beta}_{0}=\bar{Y}-\hat{\beta}_{1}\bar{X}$$
+and consider the flipped regression estimators $$\hat{\beta}_{1}'=\frac{\sum_{i=1}^n(Y_i-\bar{Y})(X_i-\bar{X})}{\sum_{i=1}^n(Y_i-\bar{Y})^2}, \;\;\;\hat{\beta}_{0}'=\bar{X}-\hat{\beta}_{1}'\bar{Y}$$ 
+Find an expression for $\hat{\beta}_{1}'$ in terms of $\hat{\beta}_{1}$.
+
+$$\hat{\beta}_{1}'=\hat{\beta}_{1}\frac{\sum_{i=1}^n(X_i-\bar{X})^2}{\sum_{i=1}^n(Y_i-\bar{Y})^2}$$
+
+3. Solve for $R^2$ in terms of $\hat{\beta}_1$ and $\frac{\sum_{i=1}^n(X_i-\bar{X})^2}{\sum_{i=1}^n(Y_i-\bar{Y})^2}$. You may use the fact that $$\sum_{i=1}^n(Y_i-\bar{Y})^2=\sum_{i=1}^n(Y_i-\hat{Y_i})^2+\sum_{i=1}^n(\hat{Y_i}-\bar{Y})^2$$ (See my Stat 111 section 6 notes for why this is the case in simple linear regression.)
+
+$$\begin{aligned}R^2&=1-\frac{\sum_{i=1}^n(Y_i-\hat{Y}_i)^2}{\sum_{i=1}^n(Y_i-\bar{Y})^2}\\
+&=\frac{\sum_{i=1}^n(Y_i-\bar{Y})^2-\sum_{i=1}^n(Y_i-\hat{Y}_i)^2}{\sum_{i=1}^n(Y_i-\bar{Y})^2}\\
+&=\frac{\sum_{i=1}^n(\hat{Y_i}-\bar{Y})^2}{\sum_{i=1}^n(Y_i-\bar{Y})^2}\\
+&=\frac{\sum_{i=1}^n(\hat{\beta}_0+\hat{\beta}_1\bar{X}-(\hat{\beta}_0+\hat{\beta}_1X_i))^2}{\sum_{i=1}^n(Y_i-\bar{Y})^2}\\
+&=\frac{\sum_{i=1}^n(\hat{\beta}_1\bar{X}-\hat{\beta}_1X_i)^2}{\sum_{i=1}^n(Y_i-\bar{Y})^2}\\
+&=\hat{\beta}_1^2\frac{\sum_{i=1}^n(X_i-\bar{X})^2}{\sum_{i=1}^n(Y_i-\bar{Y})^2}\\
+\end{aligned}$$
+
+4. Use this to write an expression for $\hat{\beta}_1'$ in terms of $R^2$ and $\hat{\beta}_1$.
+
+$$\hat{\beta}_1'=\frac{R^2}{\hat{\beta}_1}$$
+Notably, $0\leq R^2\leq 1$ for an OLS model, so $0\leq \hat{\beta}_1'\leq 1/\hat{\beta}_1$. Not only does this give us the relation between the slopes, it does so in a way that uses the two most commonly reported statistics about the model: the estimated slope and the $R^2$.
+
+\newpage
+
+# Real data linear model
+
+These problems will deal with a dataset of country-level statistics from [UNdata](https://data.un.org/) and [Varieties of Democracy](https://v-dem.net/data/the-v-dem-dataset/).
+
+```{r, echo=F}
+# Read in the data
+countries <- read.csv("data/country_stats.csv", check.names = F)
+```
+
+1. Suppose we want to know the relationship between log 2010 GDP per capita and the 2010 life expectancy for females at birth. Interpret the following output.
+```{r, echo=F}
+countries_2010 <- countries[countries$Year == 2010,]
+summary(lm(`Life expectancy at birth for females (years)` ~ log2(`GDP per capita (US dollars)`), countries_2010))
+```
+This shows that a change in log2 GDP per capita of 1 (a doubling of GDP per capita) corresponds to an extra 3.35 years of life expected at birth.
+
+2. Suppose we read this result in a paper but what we actually cared about was the regression of log2 GDP per capita on female life expectancy at birth. What can we conclude about this alternative regression?
+
+Using the result we derived above, our slope would be $R^2/\hat{\beta}_1=0.6382/3.3499=0.1905$, so an increase in female life expectancy at birth of 1 year is associated with a 0.19 increase in log2 GDP per capita (1.14x multiplicative increase).
+
+\newpage
 
 # Filling in the lm table
 
@@ -165,55 +290,4 @@ $$F=\frac{\textrm{SSM}/\textrm{df}_M}{\textrm{SSE}/\textrm{df}_E}=\frac{R^2}{1-R
 - Holding $\textrm{df}_E$ and $\textrm{df}_M$ equal, an $R^2$ closer to 1 gives a larger $F$-statistic, which makes sense because the model is explaining more of the variability, so we expect the coefficients to be non-zero.
 - When $\textrm{df}_E$ is higher (holding the other two equal), the $F$ statistic increases. When the $R^2$ is the same and $\textrm{df}_E$ is higher, the model is explaining more data points with the same number of predictors, giving us confidence that the coefficients are non-zero.
 - When $\textrm{df}_M$ is higher (holding the other two equal), we're using more predictors to get the same explanatory power ($R^2$), so we expect that these coefficients are not that useful. This drives down the $F$-statistic, giving us a less significant result.
-
-\newpage
-
-# Regression on real data
-
-These problems will deal with a dataset of country-level statistics from [UNdata](https://data.un.org/) and [Varieties of Democracy](https://v-dem.net/data/the-v-dem-dataset/).
-
-1. Using this linear model regressing log emissions per capita on log energy per capita and the log of the number of tourists, interpret the results:
-
-```{r, echo=F}
-lm1 <- lm(log2(`Emissions per capita (metric tons of carbon dioxide)`) ~ log2(`Supply per capita (gigajoules)`) + 
-            log2(`Tourist/visitor arrivals (thousands)`), 
-          countries_2010[countries_2010$`Emissions per capita (metric tons of carbon dioxide)` > 0,])
-
-summary(lm1)
-```
-
-Holding the number of tourists constant, a doubling in energy supply per capita (a 1 point change on the log2 scale) is associated with a $2^{1.116}=2.17\times$ increase in emissions. Holding the energy supply constant, a doubling in tourist arrivals is associated with a $1.07\times$ increase in emissions.
-
-2. Check the assumptions of the model.
-
-```{r, echo=F, fig.width=7.5, fig.height=7, fig.align='center', cache=T, warning=F}
-par(mfrow=c(2,2))
-plot(lm1)
-```
-
-- Linearity: The Residuals vs Fitted plot shows that there is no clear pattern to the residuals, so linearity is likely upheld.
-- Constant variance: Based on the Scale-Location plot, the residuals are about equal over the fitted values.
-- Normality: The Q-Q plot show that the lower tail is larger than expected. The emissions are possibly left skewed because a few countries had already started cutting emissions at this point.
-- Independence: This might not be true: countries that had entered into emissions cutting deals by 2010 probably influenced each others' emissions.
-
-3. Uganda has tourism and energy usage data but no emissions data. The following are a 90\% confidence interval and a 90\% prediction interval for Uganda's log emissions from this data. Identify which is which, and interpret them.
-
-```{r, echo=F}
-round(predict(lm1, newdata=countries_2010[countries_2010$Country=="Uganda",], 
-        interval = c("confidence"), level = 0.90), 3)
-round(predict(lm1, newdata=countries_2010[countries_2010$Country=="Uganda",], 
-        interval = c("prediction"), level = 0.90), 3)
-```
-
-The first is the confidence interval because it is narrower; it can be interpreted as an interval for the mean log emissions of countries with energy usage and tourism like Uganda. The second is the prediction interval because it is wider; it can be interpreted as an interval for Uganda's log emissions (or a country with the same energy usage and tourism as Uganda). 
-
-4. What we actually care about is Uganda's emissions, not its log emissions. We can exponentiate one of the intervals above to get a valid interval on the original scale, but exponentiating the other would not be valid. Which is which and why?
-
-We cannot exponentiate the confidence interval because that would violate Jensen's inequality:
-$$0.95=P(A\leq E(\log(Y)|X=x)\leq B)=P(e^A\leq \exp(E(\log(Y)|X=x))\leq e^B)\neq P(e^A\leq E(Y|X=x)\leq e^B)$$
-
-However, we can exponentiate the prediction interval:
-$$0.95=P(A\leq \log(Y)\leq B|X=x)=P(e^A\leq Y\leq e^B|X=x)$$
-
-This exponentiated prediction interval is $0.26$ to $1.63$ metric tons of carbon dioxide per person in Uganda. For reference, the United States' 2010 emissions per capita were 17.3 metric tons of carbon dioxide per person.
 

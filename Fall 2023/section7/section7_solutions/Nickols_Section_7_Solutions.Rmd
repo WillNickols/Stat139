@@ -1,9 +1,17 @@
 ---
-output: pdf_document
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
 header-includes:
-   - \usepackage{tcolorbox}
-   - \usepackage{fancyhdr}
-   - \usepackage[utf8]{inputenc}
+- \usepackage{tcolorbox}
+- \usepackage{fancyhdr}
+- \usepackage[utf8]{inputenc}
+- \usepackage{wrapfig}
+- \usepackage{amsmath}
+- \usepackage{booktabs}
+- \usepackage{esvect}
+urlcolor: blue
 ---
 
 \pagestyle{fancy}
@@ -13,70 +21,168 @@ header-includes:
 \rfoot{Page \thepage}
 
 # Announcements
-- Make sure to sign in on the [google form (linked here)](https://forms.gle/JGvZP8CPUhaefnLT6)
-- Pset 6 due October 28 at 5 pm
-- Project proposal due October 28 at 5 pm
 
-# From RSS to BIC
+\begin{wrapfigure}{r}{0.12\textwidth}
+  \centering
+    \vspace*{-1.3cm}
+    \includegraphics[width=\linewidth]{section_qr_code.png}
+\end{wrapfigure}
 
-When describing Bayes Information Criterion, the lecture notes leave the equation at $$\textrm{BIC} = 2\ln(g(\textrm{SSE})) + (p+1)\log(n)$$ where $g$ is some mysterious likelihood function.  Wikipedia [asserts](https://en.wikipedia.org/wiki/Bayesian_information_criterion#Gaussian_special_case) (with citation but without proof) that for a Gaussian model, $\textrm{BIC} = n\ln(\textrm{RSS}/n)+p\ln(n)$ where their $p$ includes the intercept.  In this problem, we'll derive the result for ourselves in our usual notation.
+Make sure to sign in on the [google form](https://forms.gle/xm1DfzuZFNcWU6fH8) (I send a list of which section questions are useful for which pset questions afterwards)
 
-1. First, recall that for a multiple regression model, $Y_i=\beta_0+\beta_1X_{1,i}+...+\beta_pX_{p, i}+\epsilon_i$ with $\epsilon_i\sim\mathcal{N}(0, \sigma^2)$.  Also recall that for this distributional assumption, $\hat{\vec{\beta}}$ is the set of parameters that maximize the likelihood function of the whole model.  Lastly, recall that in a multiple regression model, the maximum likelihood estimate for the residual variance is $\hat\sigma^2=\frac{\sum_{i=1}^n(y_i-\hat{y_i})^2}{n}$ (and note that this is different from our unbiased estimator).  Write the maximized likelihood function for the observed data as a function of $\hat{y_i}$, $y_i$, and $\hat\sigma^2$.
+Pset 7 due Friday 11/3
+
+# Introductions
+- One question or thought related to lecture last week (Model comparison, sequential variable selection)
+
+```{r, echo=F, warning=F, message=F, cache=F}
+list.of.packages <- c("caret", "gam", "ggplot2", "MASS", "dplyr", "knitr")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+
+library(ggplot2)
+library(caret)
+library(gam)
+library(MASS)
+library(dplyr)
+library(knitr)
+```
+
+# From BIC to SSE
+
+In a linear model, the Bayes Information Criterion has a nice interpretation as a trade-off between the sum of squares error $\sum_{i=1}^n(Y_i-\hat{Y_i})^2$ and the number of predictors $p$. In particular, $$\textrm{BIC} = n\log(\textrm{SSE}/n)+(p+1)\log(n)$$
+In this problem, we'll derive the result for ourselves.
+
+1. First, recall that for a multiple regression model, $Y_i=\beta_0+\beta_1X_{1,i}+...+\beta_pX_{p, i}+\epsilon_i$ with $\epsilon_i\sim\mathcal{N}(0, \sigma^2)$. Also recall that for this distributional assumption, $\hat{\vv{\beta}}$ is the set of parameters that maximize the likelihood function of the whole model. Lastly, recall that in a multiple regression model, the *maximum likelihood estimate* for the residual variance is $\hat\sigma^2=\frac{\sum_{i=1}^n(y_i-\hat{y_i})^2}{n}$ (and note that this is different from our unbiased estimator). Write the maximized likelihood function for the observed data as a function of $\hat{y_i}$, $y_i$, and $\hat\sigma^2$.
 
 $$\prod_{i=1}^n\frac{1}{\hat\sigma\sqrt{2\pi}}\exp\left[-\frac{1}{2}\frac{(y_i - \hat{y_i})^2}{\hat\sigma^2}\right]$$
 
-2. Write the maximized log likelihood function of the observed data as a function of the residual sum of squares ($\textrm{RSS}$).  (You will find there are two terms that are constant regardless of the predictors; these can be dropped because we are only interested in comparing AIC between models.)
+2. Write the maximized log likelihood function of the observed data as a function of the extra sum of squares ($\textrm{SSE}$). (You will find there are two terms that are constant regardless of the predictors; these can be dropped because we are only interested in comparing AIC between models.)
 
 $$\begin{aligned}
-\log(\hat{L})&=\sum_{i=1}^n-\log\left(\sqrt{\frac{\sum_{i=1}^n(y_i-\hat{y_i})^2}{n}}\right) - \log(\sqrt{2\pi}) -\frac{1}{2}\frac{(y_i - \hat{y_i})^2}{\frac{\sum_{i=1}^n(y_i-\hat{y_i})^2}{n}}\\
-&=\sum_{i=1}^n-\frac{1}{2}\log\left(\frac{\sum_{i=1}^n(y_i-\hat{y_i})^2}{n}\right) - \log(\sqrt{2\pi})-\frac{n}{2}\frac{(y_i - \hat{y_i})^2}{\sum_{i=1}^n(y_i-\hat{y_i})^2}\\
-&=-\frac{n}{2}\left[\log\left(\frac{\textrm{RSS}}{n}\right)\right] - n\log(\sqrt{2\pi})-\frac{n}{2}
+\log(\hat{L})&=\sum_{j=1}^n-\log\left(\sqrt{\frac{\sum_{i=1}^n(y_i-\hat{y_i})^2}{n}}\right) - \log(\sqrt{2\pi}) -\frac{1}{2}\frac{(y_j - \hat{y_j})^2}{\frac{\sum_{i=1}^n(y_i-\hat{y_i})^2}{n}}\\
+&=\sum_{j=1}^n-\frac{1}{2}\log\left(\frac{\sum_{i=1}^n(y_i-\hat{y_i})^2}{n}\right) - \log(\sqrt{2\pi})-\frac{n}{2}\frac{(y_j - \hat{y_j})^2}{\sum_{i=1}^n(y_i-\hat{y_i})^2}\\
+&=\left(\sum_{j=1}^n-\frac{1}{2}\log\left(\frac{\sum_{i=1}^n(y_i-\hat{y_i})^2}{n}\right)\right) - n\log(\sqrt{2\pi})-\frac{n}{2}\frac{\sum_{j=1}^n(y_j - \hat{y_j})^2}{\sum_{i=1}^n(y_i-\hat{y_i})^2}\\
+&=-\frac{n}{2}\left[\log\left(\frac{\textrm{SSE}}{n}\right)\right] - n\log(\sqrt{2\pi})-\frac{n}{2}
 \end{aligned}$$
 
-Since $n\log(\sqrt{2\pi})$ and $\frac{n}{2}$ do not depend on the predictors, we can drop these terms, so we end up with $$-\frac{n}{2}\left[\log\left(\frac{\textrm{RSS}}{n}\right)\right]$$
+Since $n\log(\sqrt{2\pi})$ and $\frac{n}{2}$ do not depend on the predictors, we can drop these terms, so we end up with $$-\frac{n}{2}\left[\log\left(\frac{\textrm{SSE}}{n}\right)\right]$$
 
 Note that the part that actually mattered from the likelihood function was the normalizing constant!
 
-3. Find the Bayes Information Criterion (where the Bayes Information Criterion is $(p+1)\ln(n)-2\ln(\hat{L})$ and $\hat{L}$ is the maximized likelihood function).
+3. Find the Bayes Information Criterion (where the Bayes Information Criterion is $(p+1)\log(n)-2\log(\hat{L})$ and $\hat{L}$ is the maximized likelihood function).
 
-$$(p+1)\ln(n)+n\log\left(\frac{\textrm{RSS}}{n}\right)$$
-In the original formulation of BIC, the first term should actually be $(p+2)\ln(n)$ because we are fitting $p$ predictors, an intercept, and a residual standard error.  However, this only changes the resulting BIC by a constant for all models of this type, so we (and R) drop it.
+$$(p+1)\log(n)+n\log\left(\frac{\textrm{SSE}}{n}\right)$$
+In the original formulation of BIC, the first term should actually be $(p+2)\log(n)$ because we are fitting $p$ predictors, an intercept, and a residual standard error. However, this only changes the resulting BIC by a constant for all models of this type, so we (and R functions) drop it.
 
-```{r, cache=T, warning=FALSE}
-# Fit example model
-countries <- read.csv("data/countries.csv")
-model1 <-lm(wdi_araland~poly(wdi_precip, 2, raw = TRUE), countries)
+```{r, cache=T, warning=FALSE, include=F}
+n <- 100
+p <- 10
+X <- matrix(rnorm(n * p), nrow = n, ncol = p)
+betas <- rnorm(p) * 5
+y <- X %*% betas + rnorm(n)
+model1 <- lm(y ~ X)
 
 # R's AIC
 extractAIC(model1, k=log(length(model1$residuals)))[2]
 
 # AIC by hand
 n <- length(model1$residuals)
-3 * log(n) + n * log(sum(model1$residuals^2)/n)
+(p+1) * log(n) + n * log(sum(model1$residuals^2)/n)
 ```
 
-# The Red Queen's $R^2$
+\newpage
 
-1. Recall the formula for adjusted $R_{adj}^2$: $$1-(1-R^2)\frac{n-1}{n-p-1}$$  Consider a model with $p$ predictors where the unadjusted $R^2$ is $R^2_p$.  What unadjusted $R^2_i$ would a model with $i$ predictors need to have so that the adjusted $R_{adj}^2$ remains unchanged?
+# AIC as hypothesis testing
 
-For the adjusted $R_{adj}^2$ to remain the same, we need:
+Suppose we're performing stepwise variable selection on a linear model with coefficients $\beta_0,...,\beta_k$ and we want to compare it to a model with $\beta_0,...,\beta_{k+1}$. Here, we'll use $$\textrm{AIC}=2(p+1)-2\log(\hat{L})$$
 
-$$1-(1-R_p^2)\frac{n-1}{n-p-1}=1-(1-R_i^2)\frac{n-1}{n-i-1}\implies$$
-$$R_i^2=1-(1-R_p^2)\frac{n-i-1}{n-p-1}$$
+1. Recall from Stat 111 the likelihood ratio test: under the null $H_0:\theta=\theta_0$ with $\hat{\theta}$ as the MLE, asymptotically 
+$$\Lambda(\vv{y})=2\left(\log L(\hat{\theta},\vv{y})-\log L(\theta_0,\vv{y})\right)\sim\chi^2_{1}$$
+Write the equivalent null hypothesis and null test statistic distribution for testing whether $\beta_{k+1}=0$.
 
-2. For what $p$ does adding an additional predictor require the smallest increase in unadjusted $R^2$ for the adjusted $R^2$ to remain the same?  For what $p$ does adding an additional predictor require the greatest increase?  What are the increases in unadjusted $R^2$ in both cases?
+We want to test $H_0:\beta_{k+1}=0$ with the null distribution
+$$\Lambda(\vv{y})=2\left(\log L(\hat{\beta}_{k+1}|\vv{y},\hat{\beta}_0,...,\hat{\beta}_k)-\log L(\beta_{k+1}=0|\vv{y},\hat{\beta}_0,...,\hat{\beta}_k)\right)\sim\chi^2_{1}$$
 
-The difference in unadjusted $R^2$ required is
-$$1-(1-R_p^2)\frac{n-(p+1)-1}{n-p-1}-R_{p}^2=(1-R_p^2)\left[1-\frac{n-p-2}{n-p-1}\right]$$
-Since everything else is a multiplicative or additive constant, this is minimized when $\frac{n-p-2}{n-p-1}$ is largest, which is when $p=0$.  In particular, since $R^2_0=0$, a single predictor needs to give an unadjusted $R^2$ of $1-\frac{n-2}{n-1}=\frac{1}{n-1}$ to give an adjusted $R^2$ of 0.
+2. Write the difference in AICs between the larger and smaller model in terms of log likelihoods. Feel free to refer to the log-likelihood as $\log L(\beta_{k+1}|\vv{y},\hat{\beta}_0,...,\hat{\beta}_k)$ (where $\beta_{k+1}$ should be replaced with something in each AIC). If $\textrm{AIC}_2-\textrm{AIC}_1<0$, what inequality does that give?
 
-Likewise, the difference is maximized when $\frac{n-p-2}{n-p-1}$ is smallest, which happens when $p$ is at the largest value for which the adjusted $R^2$ of the next $p$ is defined: $p=n-3$.  For this $p$, the difference in $R^2$ needs to be $$\frac{1}{2}(1-R_p^2)$$ for the adjusted $R^2$ to be unchanged.
+$$\begin{aligned}\textrm{AIC}_2-\textrm{AIC}_1&=-2\log L(\hat\beta_{k+1}|\vv{y},\hat{\beta}_0,...,\hat{\beta}_k)+2(k+2)+2\log L(0|\vv{y},\hat{\beta}_0,...,\hat{\beta}_k)-2(k+1)\\
+&=-2\log \left(\frac{L(\hat\beta_{k+1}|\vv{y},\hat{\beta}_0,...,\hat{\beta}_k)}{L(0|\vv{y},\hat{\beta}_0,...,\hat{\beta}_k)}\right)+2\\
+\end{aligned}$$
 
-Also, note that for all $p$ the required difference is maximized when $R_p$ is 0.
+If $\textrm{AIC}_2-\textrm{AIC}_1<0$, this implies $$2\log \left(\frac{L(\hat\beta_{k+1}|\vv{y},\hat{\beta}_0,...,\hat{\beta}_k)}{L(0|\vv{y},\hat{\beta}_0,...,\hat{\beta}_k)}\right)>2$$
+
+3. Under the null that $\beta_{k+1}=0$, what is the asymptotic probability that $\textrm{AIC}_2-\textrm{AIC}_1<0$?
+
+Since this is equivalent to the inequality above,
+$$\begin{aligned}P(\textrm{AIC}_2-\textrm{AIC}_1<0)&=P\left(2\log \left(\frac{L(\hat\beta_{k+1}|\vv{y},\hat{\beta}_0,...,\hat{\beta}_k)}{L(0|\vv{y},\hat{\beta}_0,...,\hat{\beta}_k)}\right)>2\right)\\
+&=1-F_{\chi_1^2}(2)
+\end{aligned}$$
+
+4. If we view each step in the model selection as a likelihood test of whether $\textrm{AIC}_2<\textrm{AIC}_1$, what is the $\alpha$ level we are using for each test?
+
+The $\alpha$ level is the maximum Type I error probability, which is $$1-F_{\chi_1^2}(2)\approx 0.157$$
+That is, with enough data, every time we test an irrelevant coefficient in a stepwise procedure, there is a $0.157$ probability we include it by accident.
+
+```{r, include=F, cache=T}
+library(MASS)
+
+# Checking this actually works correctly
+n <- 100
+nsims <- 10000
+
+true_coefficients <- c(0.2, 0.0, 2, 0)
+p <- length(true_coefficients)
+prop_test_correct <- c()
+
+for (i in 1:nsims) {
+  X <- matrix(rnorm(n * p), n, p)
+  y <- X %*% true_coefficients + rnorm(n)
+  data <- data.frame(y, X)
+  
+  # Run forward selection
+  selected_model <- lm(y ~ 1, data = data)
+  selected_vars <- c()
+  
+  i <- 1
+  while (i <= p) {
+    if (length(selected_vars) == p) {
+      break
+    }
+    if (!(names(data)[i + 1] %in% selected_vars)) {
+      candidate_formula <- as.formula(paste("y ~", paste(selected_vars, collapse = " + "), "+", names(data)[i + 1]))
+      candidate_model <- lm(candidate_formula, data = data)
+      
+      # If the coefficient shouldn't be added, check whether it is
+      if (names(data)[i + 1] %in% names(data)[true_coefficients!=0]) {
+        if (AIC(candidate_model) < AIC(selected_model)) {
+          prop_test_correct <- c(prop_test_correct, 0)
+        } else {
+          prop_test_correct <- c(prop_test_correct, 1)
+        }
+      }
+      
+      # Compare AIC between the current and previously selected models
+      if (AIC(candidate_model) < AIC(selected_model)) {
+        selected_model <- candidate_model
+        selected_vars <- c(selected_vars, names(data)[i + 1])
+        i <- 1
+      } else {
+        i <- i + 1
+      }
+    } else {
+      i <- i + 1
+    }
+  }
+}
+t.test(prop_test_correct)
+```
+
+\newpage
 
 # Step procedures and cross validation
 
-1. Given the following table, find the model produced by forward selection using an ESS $F$-test and starting from a model with only an intercept.  (You should be able to do this with only a single test.)
+1. Given the following table, find the model produced by forward selection using an ESS $F$-test and starting from a model with only an intercept. (You should be able to do this with only a single test.)
 
 \begin{center}
 \begin{tabular}{ccc}
@@ -90,110 +196,123 @@ $X_3$ & 6,760 & 37 \\
 \end{tabular}
 \end{center}
 
-Since the model with $X_1$ has the smallest residual sum of squares, we will test for it being a better predictive model than the intercept-only model.  Our test statistic is $$F=\frac{(7200 - 6600)/1}{6600/37}\approx1.17$$ which we test using a $F_{1, 37}$ distribution.
-```{r, cache=TRUE}
+Since the model with $X_1$ has the smallest residual sum of squares, we will test for it being a better predictive model than the intercept-only model. Our test statistic is $$F=\frac{(7200 - 6600)/1}{6600/37}\approx1.17$$ which we test using a $F_{1, 37}$ distribution. We get a p-value of $0.074>0.05$, so we fail to reject the null and conclude that $X_1$, $X_2$, and $X_3$ add no predictive power on their own.
+```{r, cache=TRUE, include=F}
 f_stat <- (7200 - 6600)/(6600/37)
 1 - pf(f_stat, 1, 37)
 ```
-We get a p-value of $0.074>0.05$, so we fail to reject the null and conclude that $X_1$, $X_2$, and $X_3$ add no predictive power on their own.
 
-\newpage
+These problems will deal with a dataset of country-level statistics from [UNdata](https://data.un.org/), [Varieties of Democracy](https://v-dem.net/data/the-v-dem-dataset/), and the [World Bank](https://data.worldbank.org/indicator/AG.LND.PRCP.MM).
 
-The rest of this section will deal with a data set of country-level statistics from [this source](https://www.gu.se/en/quality-government/qog-data/data-downloads/standard-dataset) with an explanation of the data encoding found [here](https://www.qogdata.pol.gu.se/data/codebook_std_jan22.pdf).  
-
-A few useful columns:
-
-- `mad_gdppc`: GDP per capita
-- `bi_fishes`: Number of endangered fish species
-- `bi_fungi`: Number of endangered fungi species
-- `bi_mammals`: Number of endangered mammal species
-- `bi_reptiles`: Number of endangered reptile species
-- `bi_molluscs`: Number of endangered mollusc species
-- `bi_othinverts`: Number of other endangered invertebrate species
-
-2. The next three questions will ask you to run forward, backward, and both-direction variable selection procedures.  Briefly glance ahead and predict which model will have the highest $R^2$.
-
-We expect the backwards variable selection procedure to give a model with the highest $R^2$ because it starts with the largest model and is therefore most likely to overfit.  There is essentially a multiple hypothesis testing scenario taking place here in which the backwards variable selection procedure requires us to fail to reject the null far more times to end up with a model as small as that of the forward or both-direction procedures.
-
-3. Run a forward variable selection procedure to predict log GDP per capita from endangered species statistics starting with an intercept only model and using an upper scope of all the two-way interaction terms for the variables listed above.  Report this model’s coefficient estimates, R^2, and AIC.
-
-```{r, cache=T, echo=F}
-countries <- read.csv("data/countries.csv")
+```{r, cache=T, warning=FALSE, echo=F}
+countries <- read.csv("data/country_stats.csv", check.names = F)
+countries_2010 <- countries[countries$Year == 2010,]
 ```
 
-```{r, cache=TRUE}
-lm1 <- lm(log(mad_gdppc) ~ 1, countries)
+2. The next three questions will run forwards, backwards, and both-direction variable selection procedures. Predict which model will have the highest $R^2$.
+
+We expect the backwards variable selection procedure to give a model with the highest $R^2$ because it starts with the largest model and is therefore most likely to overfit. Because it starts with many more terms, retaining even a small proportion of spurious significant predictors will result in many more terms in the final model.
+
+3. The following runs a forward variable selection procedure to predict log2 GDP per capita in 2010 from a country's urban population, its proportion of people 60+, its patents in force, its arable land, its energy supply, and its unemployment rate. The procedure starts with an intercept only model and uses an upper scope of all the two-way interaction terms for the variables listed above. The final model is shown along with the $R^2$ and AIC. How many coefficients are retained? Are the p-values reliable?
+
+```{r, cache=TRUE, echo=F}
+countries_subset <- countries_2010[!is.na(log2(countries_2010$`GDP per capita (US dollars)`)) & 
+                                   !is.na(countries_2010$`Urban population (percent)`) &
+                                   !is.na(countries_2010$`Population aged 60+ years old (percentage)`) &
+                                     !is.na(countries_2010$`Patents in force (number)`) &
+                                     !is.na(countries_2010$`Arable land (% of total land area)`) &
+                                     !is.na(countries_2010$`Supply per capita (gigajoules)`) &
+                                     !is.na(countries_2010$`Unemployment rate - Total`),]
+
+colnames(countries_subset) <- case_when(colnames(countries_subset) == "GDP per capita (US dollars)" ~ "GDP",
+                                        colnames(countries_subset) == "Urban population (percent)" ~ "Urban",
+                                        colnames(countries_subset) == "Population aged 60+ years old (percentage)" ~ "60+",
+                                        colnames(countries_subset) == "Patents in force (number)" ~ "Patents",
+                                        colnames(countries_subset) == "Arable land (% of total land area)" ~ "Arable",
+                                        colnames(countries_subset) == "Supply per capita (gigajoules)" ~ "Energy",
+                                        colnames(countries_subset) == "Unemployment rate - Total" ~ "Unemployment",
+                                        TRUE ~ colnames(countries_subset)
+                                        )
+
+lm1 <- lm(log2(GDP) ~ 1, countries_subset)
 step_model_1 <- step(lm1, 
-                     scope = list(upper = formula(lm(log(mad_gdppc) ~ bi_fishes * bi_fungi * bi_mammals * bi_molluscs * 
-                                                       bi_othinverts * bi_reptiles, countries))), 
+                     scope = list(upper = formula(lm(log2(GDP) ~ (Urban + `60+` + Patents + Arable + Energy + Unemployment)^2, countries_subset))), 
                      direction = "forward", trace = F)
 summary(step_model_1)$coefficients
-summary(step_model_1)$r.squared
-AIC(step_model_1)
+round(summary(step_model_1)$r.squared, 3)
+round(AIC(step_model_1), 3)
 ```
 
-4. Run a backwards variable selection procedure to predict log GDP per capita from endangered species statistics starting with all interaction terms of the variables listed above and using a lower bound of an intercept-only model.  Report this model’s coefficient estimates, R^2, and AIC.
+There are 6 predictors retained. The p-values are not reliable since they haven't been corrected for multiple testing (they are likely too low).
 
-```{r, cache=TRUE}
-step_model_2 <- step(lm(log(mad_gdppc) ~ bi_fishes * bi_fungi * bi_mammals * bi_molluscs * 
-                          bi_othinverts * bi_reptiles, countries), 
-                     scope = list(lower = formula(lm(log(mad_gdppc) ~ 1, countries))), 
+4. The following runs a backwards variable selection procedure. The procedure starts with all the two-way interaction terms for the variables listed above. The final model is shown along with the $R^2$ and AIC. Note how the number of coefficients changes.
+
+```{r, cache=TRUE, echo=F}
+step_model_2 <- step(lm(log2(GDP) ~ (Urban + `60+` + Patents + Arable + Energy + Unemployment)^2, countries_subset), 
+                     scope = list(lower=formula(log2(GDP) ~ 1)), 
                      direction = "backward", trace = F)
 summary(step_model_2)$coefficients
-summary(step_model_2)$r.squared
-AIC(step_model_2)
+round(summary(step_model_2)$r.squared, 3)
+round(AIC(step_model_2), 3)
 ```
-5. Run a both-direction variable selection procedure to predict log GDP per capita from endangered species statistics starting with a model including all variables listed above (but no interactions) and using a lower bound of an intercept-only model and an upper bound of a model with all the interaction terms.  Report this model’s coefficient estimates, R^2, and AIC.
+The $R^2$ is slightly higher, and the AIC is slightly lower. The model has 14 predictors, up from 6 before.
 
-```{r, cache=TRUE}
-step_model_3 <- step(lm(log(mad_gdppc) ~ bi_fishes + bi_fungi + bi_mammals + bi_molluscs + 
-                          bi_othinverts + bi_reptiles, countries), 
-                     scope = list(lower = formula(lm(log(mad_gdppc) ~ 1, countries)),
-                                  upper = formula(lm(log(mad_gdppc) ~ bi_fishes * bi_fungi * bi_mammals * 
-                                                       bi_molluscs * bi_othinverts * bi_reptiles, 
-                                                     countries))), 
+5. The following runs a both-direction variable selection procedure. It starts with all the coefficients and has an upper bound of all interactions. The final model is shown along with the $R^2$ and AIC. How does this model compare to the ones above?
+
+```{r, cache=TRUE, echo=F}
+step_model_3 <- step(lm(log2(GDP) ~ Urban + `60+` + Patents + Arable + Energy + Unemployment, countries_subset), 
+                     scope = list(upper=formula(log2(GDP) ~ (Urban + `60+` + Patents + Arable + Energy + Unemployment)^2),
+                                  lower=formula(log2(GDP) ~ 1)), 
                      direction = "both", trace = F)
+
 summary(step_model_3)$coefficients
-summary(step_model_3)$r.squared
-AIC(step_model_3)
+round(summary(step_model_3)$r.squared, 3)
+round(AIC(step_model_3), 3)
 ```
+The both-direction fitting actually found the same model as the forward selection.
+
 6. Based on AIC, which model is the best?  Why didn't the other procedures find the same model?
 
-The forward procedure found a model with the lowest AIC, so it produced the best model.  Step-wise variable selection is prone to getting stuck in local minima, so it is possible for different starting models to converge on different final models.
+The backwards procedure produced the lowest AIC (by a small margin), making it the best. Step-wise variable selection uses a local search of adjacent models, so it can get stuck in local minima. Therefore, it is possible for different starting models to converge on different final models.
 
-7. Recall from last week that we looked at various models incorporating the following variables:
-- `wdi_araland`: Arable land (\% of land area)
-- `wdi_precip`: Average annual precipitation (mm per year)
+7. Recall from last week that we looked at various models predicting the proportion of arable land from the precipitation.
 
-Run $k$-fold cross validation with $k=10, 20, 50$ to estimate out-of-sample RMSE for a LOESS model and a degree 2 polynomial model to predict the proportion of arable land from the country's average annual precipitation.  Which model performs better for each $k$?
+Here, we run $k$-fold cross validation to estimate out-of-sample RMSE for a LOESS model and a degree 2 polynomial model to predict the proportion of arable land from the country's average annual precipitation. Which model performs better for each $k$?
 
-```{r, warning=F, cache=T}
+```{r, warning=F, cache=T, echo=F}
 library(caret)
+library(gam)
 set.seed(139)
+
+colnames(countries_2010) <- case_when(colnames(countries_2010) == "Arable land (% of total land area)" ~ "Arable",
+                                        colnames(countries_2010) == "Precipitation (mm)" ~ "Precipitation",
+                                        TRUE ~ colnames(countries_2010)
+                                        )
 
 poly_model <- vector(length = 3)
 i <- 1
-for (ncross in c(10, 20, 50)) {
-  poly_model[i] <- train(wdi_araland ~ poly(wdi_precip, 2, raw = TRUE), data = countries,
+ks <- c(10, 20, 50, 100, 200)
+for (ncross in ks) {
+  poly_model[i] <- train(Arable~poly(Precipitation, 2, raw = TRUE), data = countries_2010,
       method = "lm",
       trControl = trainControl(method = "cv", number = ncross), 
-      na.action = na.omit)$results[2]
+      na.action = na.omit)$results[2][[1]]
   i <- i + 1
 }
 
 loess_model <- vector(length = 3)
 i <- 1
-for (ncross in c(10, 20, 50)) {
-  loess_model[i] <- train(wdi_araland ~ wdi_precip, data = countries,
-      method = "gamLoess", tuneGrid = expand.grid(span = 1,degree=1),
+for (ncross in ks) {
+  loess_model[i] <- train(Arable~Precipitation, data = countries_2010,
+      method = "gamLoess",
       trControl = trainControl(method = "cv", number = ncross), 
-      na.action = na.omit)$results[3]
+      na.action = na.omit)$results[3][[1]]
   i <- i + 1
 }
 
-cbind(poly_model, loess_model)
+kable(data.frame("k"=ks, "polynomial"=round(poly_model, 3), "loess"=round(loess_model, 3)))
 ```
-The polynomial model performs better than the LOESS model for all $k$.  The RMSE decreases for higher $k$ because a smaller proportion of the data is reserved for testing, so more data is used to fit the model.  (A higher $k$ makes cross validation take longer though, which can be problematic for larger models.)
+The LOESS model performs better than the polynomial for all $k$. The RMSE decreases for higher $k$ because a smaller proportion of the data is reserved for testing, so more data is used to fit a more accurate model. (A higher $k$ makes cross validation take longer though, which can be problematic for larger models.)
 
 
 

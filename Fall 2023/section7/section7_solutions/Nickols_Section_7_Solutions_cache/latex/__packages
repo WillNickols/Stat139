@@ -3,3 +3,6 @@ lattice
 caret
 foreach
 gam
+MASS
+dplyr
+knitr

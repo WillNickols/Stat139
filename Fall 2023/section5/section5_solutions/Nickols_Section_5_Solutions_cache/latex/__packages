@@ -2,3 +2,4 @@ ggplot2
 gridExtra
 MASS
 reshape2
+dplyr

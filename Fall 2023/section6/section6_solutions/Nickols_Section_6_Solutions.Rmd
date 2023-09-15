@@ -1,9 +1,17 @@
 ---
-output: pdf_document
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
 header-includes:
-   - \usepackage{tcolorbox}
-   - \usepackage{fancyhdr}
-   - \usepackage[utf8]{inputenc}
+- \usepackage{tcolorbox}
+- \usepackage{fancyhdr}
+- \usepackage[utf8]{inputenc}
+- \usepackage{wrapfig}
+- \usepackage{amsmath}
+- \usepackage{booktabs}
+- \usepackage{esvect}
+urlcolor: blue
 ---
 
 \pagestyle{fancy}
@@ -13,131 +21,149 @@ header-includes:
 \rfoot{Page \thepage}
 
 # Announcements
-- Make sure to sign in on the [google form (linked here)](https://forms.gle/JGvZP8CPUhaefnLT6)
-- Pset 5 due October 21 at 5 pm
 
-# Normal interactions
+\begin{wrapfigure}{r}{0.12\textwidth}
+  \centering
+    \vspace*{-1.3cm}
+    \includegraphics[width=\linewidth]{section_qr_code.png}
+\end{wrapfigure}
 
-Let $Z\sim\mathcal{N}(0,1)$ and $X\sim\mathcal{N}(\mu,\sigma^2)$.
+Make sure to sign in on the [google form](https://forms.gle/xm1DfzuZFNcWU6fH8) (I send a list of which section questions are useful for which pset questions afterwards)
 
-1. Show that $\textrm{Corr}(Z, Z^n)=0$ for all even whole numbers $n$.
+Pset 6 due Friday 10/27
 
-$$\textrm{Cov}(Z,Z^n)=E(Z^{n+1})-E(Z)E(Z^n)$$
+# Introductions
+- One question or thought related to lecture last week (Binary predictors, interactions, polynomials, smoothers)
 
-Because the LOTUS function for an odd power of a standard normal is odd, it integrates to 0, so $E(Z^{n+1})=E(Z)=0$, and the covariance and therefore the correlation are 0. 
+```{r, echo=F, warning=F, message=F, cache=F}
+list.of.packages <- c("ggplot2", "gridExtra", "MASS", "reshape2", "dplyr")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
 
-2. Show that $\textrm{Corr}(Z, Z^n)>0$ for all odd whole numbers $n$.  You may use the useful fact from the Stat 110 book (page 284) that $E(Z^{2n})=\frac{(2n)!}{2^nn!}$ for integers $n\geq 0$.
-$$\textrm{Cov}(Z,Z^n)=E(Z^{n+1})-E(Z)E(Z^n)=E(Z^{2k})$$
-for some positive integer $k$ since $n$ is odd.  Then, applying the Stat 110 result, $E(Z^{2k})=\frac{(2k)!}{2^kk!}>0$, so dividing it by the square root of the product of standard deviations will still give a positive number.
+library(ggplot2)
+library(gridExtra)
+library(MASS)
+library(reshape2)
+library(dplyr)
+```
 
-3. Find $\textrm{Cov}(X, X^2)$.  When will this be positive?  When will this be negative?  (Hint: Consider standardizing $X$.)
+# Correlated transformations
 
-First, note that $$\frac{X-\mu}{\sigma}\sim\mathcal{N}(0,1)$$
-Then, for a standard normal $Z$, $$\begin{aligned}
-\textrm{Cov}(X, X^2)&=\textrm{Cov}(\sigma Z+\mu, (\sigma Z+\mu)^2)\\
-&=\sigma\textrm{Cov}(Z, \sigma^2 Z^2+2\sigma\mu Z)\\
-&=\sigma(E(\sigma^2Z^3+2\sigma\mu Z^2) - E(Z)E(\sigma^2 Z^2+2\sigma\mu Z))\\
-&=\sigma(\sigma^2E(Z^3)+2\sigma\mu E(Z^2))\\
-&=2\sigma^2\mu
+Transformations and polynomials are useful, but they often create additional correlation in the model. Suppose we have two increasing functions $g$ and $h$, and let $X_1$ and $X_2$ be i.i.d. continuous random variables.
+
+1. Explain why $$(g(X_1)-g(X_2))(h(X_1)-h(X_2))>0$$
+
+If $X_1>X_2$, $g(X_1)>g(X_2)$ and $h(X_1)>h(X_2)$, so a positive times a positive is positive. If $X_1<X_2$, $g(X_1)<g(X_2)$ and $h(X_1)<h(X_2)$, and a negative times a negative is positive.
+
+2. Take the expectation of both sides and expand to show that $\textrm{Cov}(g(X),h(X))>0$ for a random variable $X$ with the same distribution as $X_1$ and $X_2$.
+
+$$\begin{aligned}
+E((g(X_1)-g(X_2))(h(X_1)-h(X_2)))&=E(g(X_1)h(X_1)-g(X_1)h(X_2)-g(X_2)h(X_1)+g(X_2)h(X_2)))\\
+&=E(g(X_1)h(X_1)+g(X_2)h(X_2))-E(g(X_1))E(h(X_2))-E(g(X_2))E(h(X_1))\\
+&=2E(g(X)h(X))-2E(g(X))E(h(X))\\
+&=2\textrm{Cov}(g(X),h(X))
 \end{aligned}$$
 
-Because $\sigma^2$ will always be positive, the covariance will have the same sign as $\mu$.  This makes sense because values of $X$ that are larger in magnitude will correspond to values of $X^2$ that are larger in magnitude, so the only question is whether the always-positive $X^2$ will match to $X$ that are usually positive or usually negative.
+which implies $\textrm{Cov}(g(X),h(X))>0$.
 
-4. What implication does this have for fitting linear models with a Normal predictor and its squared term?
+3. Suppose you have some continuous predictor $X$ and two increasing transformations of $X$ you include in the model. What does this say about the transformed predictors?
 
-If the predictor is not centered at 0, a model that uses the predictor and its squared term will potentially have severe multicollinearity, changing slope coefficients significantly from models without the squared term.
+They will be positively correlated, creating multicollinearity that could strongly affect the slopes relative to a model with only one of the transformations.
 
-# Island of Misfit Toys
+4. Suppose you have a strictly positive continuous predictor and you include it as a polynomial. What can you say about the $X, X^2, X^3, ...$ coefficients?
 
-This section will deal with a data set of country-level statistics from [this source](https://www.gu.se/en/quality-government/qog-data/data-downloads/standard-dataset) with an explanation of the data encoding found [here](https://www.qogdata.pol.gu.se/data/codebook_std_jan22.pdf).
+They will all be positively correlated since $g(x)=x^n$ is a strictly increasing function for $x>0$.
 
-```{r, cache=T, warning=FALSE}
-countries <- read.csv("data/countries.csv")
+\newpage
+
+# Groups and polynomials on real data
+
+These problems will deal with a dataset of country-level statistics from [UNdata](https://data.un.org/), [Varieties of Democracy](https://v-dem.net/data/the-v-dem-dataset/), and the [World Bank](https://data.worldbank.org/indicator/AG.LND.PRCP.MM).
+
+```{r, cache=T, warning=FALSE, echo=F}
+countries <- read.csv("data/country_stats.csv", check.names = F)
+countries_2010 <- countries[countries$Year == 2010,]
 ```
 
-A few useful columns:
+1. With `Northern America` as the reference group, a regression model is fit to predict a country's GDP per capita from its region. Interpret the coefficients.
 
-- `mad_gdppc`: GDP per capita
-- `ht_region`: Country's region of the world: Eastern Europe (1), Latin America (2), North Africa & the Middle East (3), Sub-Saharan Africa (4), Western Europe and North America (5), East Asia (6), South-East Asia (7), South Asia (8), Pacific (9), Caribbean (10)
-- `wdi_araland`: Arable land (\% of land area)
-- `wdi_precip`: Average annual precipitation (mm per year)
-- `spi_ospi`: Overall social progress index on 0-100 scale
-- `bmr_dem`: Binary democracy measure
-
-1. Using `relevel` to set Western Europe and North America as the reference group, fit a regression model to predict a country's GDP per capita from its region.  Interpret the coefficients.
-
-```{r, cache=T, warning=FALSE}
-countries$ht_region <- as.factor(countries$ht_region)
-countries$ht_region <- relevel(countries$ht_region, ref = "5")
-summary(lm(mad_gdppc~ht_region, countries))$coefficients
+```{r, cache=T, warning=FALSE, echo=F}
+countries_2010$Region <- as.factor(countries_2010$Region)
+countries_2010$Region <- relevel(countries_2010$Region, ref = "Northern America")
+summary(lm(countries_2010$`GDP per capita (US dollars)`~Region, countries_2010))$coefficients
 ```
-North America and Western Europe have an average GDP per capita of $44737.85$ dollars (and this GDP per capita is significantly different from 0).  Eastern Europe has an average GDP per capita of $44737.85 - 26145.84=18592.01$ dollars.  (And so on...)  Sub-Saharan Africa has the lowest average GDP per capita at $44737.85-39547.73=5190.12$ dollars, and South Asia has a GDP per capita that is nearly as low.  All regions (except North America and Western Europe) have GDP per capita values that are significantly different from North America and Western Europe's.
+North American countries have an average GDP per capita of \$60429.75. This is significantly more (pairwise) than every other region except Oceania and West Europe. The average GDP per capita in the other regions can be calculated by adding their coefficients to the intercept. For example, the Caribbean has an average GDP per capita of $60429.75+(-42178.39)=18251.36$.
 
-2. Build a 2nd order polynomial regression model to predict the proportion of arable land in a country from its average annual precipitation.  Interpret the output and provide a visual.
+2. The following 2nd order polynomial regression model predicts the percent of arable land in a country from its average annual precipitation. What is the optimal precipitation for having the most arable land?
 
-```{r, cache=T, warning=FALSE}
+```{r, echo=F, fig.width=4.5, fig.height=3, fig.align='center', cache=T, warning=F}
 library(ggplot2)
 
-lm2 <- lm(wdi_araland~poly(wdi_precip, 2, raw = TRUE), countries)
-summary(lm2)
+lm1 <- lm(`Arable land (% of total land area)`~poly(`Precipitation (mm)`, 2, raw = TRUE), countries_2010)
+coefficients(summary(lm1))
 
-ggplot(countries, aes(x=wdi_precip, y=wdi_araland)) + 
+ggplot(countries, aes(x=`Precipitation (mm)`, y=`Arable land (% of total land area)`)) + 
   geom_point() + 
   stat_smooth(method = "lm",
               formula = y ~ poly(x, 2)) + 
   ylim(0, 60) + 
   theme_bw()
 ```
-Setting the derivative of the fit line to 0 gives $\frac{\hat{\beta_1}}{-2\hat{\beta_2}}\approx1260$.  Therefore, the estimated proportion of arable land increases with increasing precipitation up to 1260 mm per year, after which it declines.  This makes sense because areas with either very little rainfall or a lot of rainfall are unlikely to have much productive farmland.
+Setting the derivative of the fit line to 0 gives $$2\hat{\beta_2}x+\hat{\beta}_1=0\implies x=\frac{\hat{\beta_1}}{-2\hat{\beta_2}}=1256.4$$ 
+Therefore, the estimated proportion of arable land increases with increasing precipitation up to 1256.4 mm per year, after which it declines. This makes sense because areas with either very little rainfall or a lot of rainfall are unlikely to have much productive farmland. Interestingly, the annual average precipitation in Cambridge is [1174 mm](https://en.climate-data.org/north-america/united-states-of-america/massachusetts/cambridge-1734/).
 
-3. Use the previous model to find the probability that a country with 1500 mm annual precipitation per year on average will have less than 10\% of its land arable.  
+3. Use the previous model to find the probability that a country with $X'$ mm annual precipitation will have less than $\tau$ percent of its land arable. Recall that $$T=\frac{Y'-\vv{X}_0^T\vv{\hat{\beta}}}{\hat{\sigma}\sqrt{1+\vv{X}_0^T(\mathbf{X}^T\mathbf{X})^{-1}\vv{X}_0}}\sim t_{n-(p+1)}$$ where $\vv{X}_0$ is the new vector of predictors and $\mathbf{X}$ is the matrix of previous predictors.
 
-```{r, cache=T}
+Let $\vv{X}_0^T=[1, X', X'^2]$.
+
+$$\begin{aligned}P(Y'<\tau)&=P\left(\frac{Y'-\vv{X}_0^T\vv{\hat{\beta}}}{\hat{\sigma}\sqrt{1+\vv{X}_0^T(\mathbf{X}^T\mathbf{X})^{-1}\vv{X}_0}}<\frac{\tau-\vv{X}_0^T\vv{\hat{\beta}}}{\hat{\sigma}\sqrt{1+\vv{X}_0^T(\mathbf{X}^T\mathbf{X})^{-1}\vv{X}_0}}\right)\\
+&=P\left(T<\frac{\tau-\vv{X}_0^T\vv{\hat{\beta}}}{\hat{\sigma}\sqrt{1+\vv{X}_0^T(\mathbf{X}^T\mathbf{X})^{-1}\vv{X}_0}}\right)\\
+&=F_{t_{n-(p+1)}}\left(\frac{\tau-\vv{X}_0^T\vv{\hat{\beta}}}{\hat{\sigma}\sqrt{1+\vv{X}_0^T(\mathbf{X}^T\mathbf{X})^{-1}\vv{X}_0}}\right)
+\end{aligned}$$
+
+For example, we can look at the probability a country with 1500 mm precipitation per year on average will have less than 10\% of its land arable.
+
+```{r, cache=T, echo=F}
 threshold = 10
 
-C = c(1, 1500, 1500^2)
+X_0 = c(1, 1500, 1500^2)
 
 # Using the null distribution, we can standardize the threshold and find the density below it
-pt((threshold - C %*% coef(lm2)) / 
-     (sqrt(t(C) %*% vcov(lm2) %*% C + summary(lm2)$sigma^2)), 
-   lm2$df.residual)
+pt((threshold - X_0 %*% coef(lm1)) / 
+     (sqrt(t(X_0) %*% vcov(lm1) %*% X_0 + summary(lm1)$sigma^2)), 
+   lm1$df.residual)
 ```
 
 
 ```{r, include=F, cache=TRUE}
 # Check that this works as intended
-predict(lm2,newdata = data.frame(wdi_precip=1500),interval = "prediction")
-threshold = c(-7.61454, 44.1593)
+prediction <- predict(lm1,newdata = data.frame('Precipitation (mm)'=1500, check.names = F),interval = "prediction")
+threshold = prediction[2:3]
 
 # These should threshold above 0.025 and 0.975 density 
-pt((threshold - as.vector(C %*% coef(lm2))) / 
-     as.vector(sqrt(t(C) %*% vcov(lm2) %*% C + summary(lm2)$sigma^2)), 
-   lm2$df.residual)
+pt((threshold - as.vector(X_0 %*% coef(lm1))) / 
+     as.vector(sqrt(t(X_0) %*% vcov(lm1) %*% X_0 + summary(lm1)$sigma^2)), 
+   lm1$df.residual)
 ```
-The probability of a country with 1500 mm annual precipitation having below 10\% arable land is 0.264.  This answer is based on a multivariate extension of the prediction interval in which 
 
-$$\hat{Y}|\vec{C}\sim\mathcal{N}\left(\vec{C}^T\vec{\beta}, \sigma^2[\vec{C}^T(\mathbf{X}^T\mathbf{X})^{-1}\vec{C} + 1]\right)$$
+4. Compare the prediction accuracy of a LOESS model to that of the previous model.
 
-When we only have our sample parameters, we use the fact that
-$$\frac{\vec{C}^T\hat{\vec{\beta}}}{\sqrt{\hat{\sigma}^2[\vec{C}^T(\mathbf{X}^T\mathbf{X})^{-1}\vec{C} + 1]}}\sim t_{n-p-1}$$
-and we can use $t$-statistics of the form $$\frac{\tau-\vec{C}^T\hat{\vec{\beta}}}{\sqrt{\hat{\sigma}^2[\vec{C}^T(\mathbf{X}^T\mathbf{X})^{-1}\vec{C} + 1]}}$$
+```{r, echo=F, fig.width=4.5, fig.height=3, fig.align='center', cache=T, warning=F}
+loess_model <- loess(countries_2010$`Arable land (% of total land area)`~countries_2010$`Precipitation (mm)`)
 
-4. Fit a LOESS model for the same data and compare its prediction accuracy to that of the previous model.
-
-```{r, cache=T, warning=FALSE}
-loess_model <- loess(wdi_araland~wdi_precip, countries)
+sse <- function(x) {return(sum((x - mean(x))^2))}
 
 # LM Rsq
-1-sum(residuals(lm2)^2)/
-  sum((countries[!is.na(countries$wdi_araland) & !is.na(countries$wdi_precip),]$wdi_araland - 
-         mean(countries[!is.na(countries$wdi_araland) & !is.na(countries$wdi_precip),]$wdi_araland))^2)
+lm_rsq <- 1-sum(residuals(lm1)^2)/
+  sse(countries_2010[!is.na(countries_2010$`Arable land (% of total land area)`) & 
+                       !is.na(countries_2010$`Precipitation (mm)`),]$`Arable land (% of total land area)`)
 
 # Loess Rsq
-1-sum(residuals(loess_model)^2)/
-  sum((countries[!is.na(countries$wdi_araland) & !is.na(countries$wdi_precip),]$wdi_araland - 
-         mean(countries[!is.na(countries$wdi_araland) & !is.na(countries$wdi_precip),]$wdi_araland))^2)
+loess_rsq <- 1-sum(residuals(loess_model)^2)/
+  sse(countries_2010[!is.na(countries_2010$`Arable land (% of total land area)`) & 
+                       !is.na(countries_2010$`Precipitation (mm)`),]$`Arable land (% of total land area)`)
 
-ggplot(countries, aes(x=wdi_precip, y=wdi_araland)) + 
+ggplot(countries, aes(x=`Precipitation (mm)`, y=`Arable land (% of total land area)`)) + 
   geom_point() + 
   stat_smooth(method = "lm",
               formula = y ~ poly(x, 2)) + 
@@ -146,35 +172,56 @@ ggplot(countries, aes(x=wdi_precip, y=wdi_araland)) +
               col="red") + 
   ylim(0, 60) + 
   theme_bw()
+
+print(round(c("LM R2" = lm_rsq, "LOESS R2" = loess_rsq), 3))
 ```
-The LOESS model's $R^2$ value is more than double the linear model's $R^2$, so it is explaining much more of the variance, particularly in the 0-1000 mm precipitation range.
+The LOESS model's $R^2$ value is more than double the linear model's $R^2$, so it is explaining much more of the variance.
 
-5. Fit a model to predict a country's overall social progress index from the log of its GDP per capita, its democracy status, and the interaction of the two.  Interpret the coefficients of the model.
+5. Perform a formal hypothesis test to determine whether a fourth degree polynomial fits the data better than a second degree polynomial.
 
-```{r, cache=T, warning=FALSE}
-lm3 <- lm(spi_ospi~log(mad_gdppc, 2) * as.factor(bmr_dem), countries)
+```{r, echo=F, fig.width=4.5, fig.height=3, fig.align='center', cache=T, warning=F}
+ggplot(countries, aes(x=`Precipitation (mm)`, y=`Arable land (% of total land area)`)) + 
+  geom_point() + 
+  stat_smooth(method = "lm",
+              formula = y ~ poly(x, 2)) + 
+  stat_smooth(method = "lm",
+              formula = y ~ poly(x, 4), col="red") + 
+  ylim(0, 60) + 
+  theme_bw()
+
+lm2 <- lm(`Arable land (% of total land area)`~poly(`Precipitation (mm)`, 4, raw = TRUE), countries_2010)
+anova(lm1, lm2)
+```
+In an ESS $F$-test of $H_0: \beta_{\textrm{Precipitation}^3}=\beta_{\textrm{Precipitation}^4}=0$ (the fourth degree polynomial is no better) vs $H_a:$ at least one of the coefficients is not 0, we get an $F$-statistic of 13.3 for an $F_{2, 174}$ distribution, yielding a p-value of $4.3\times 10^{-6}$. Therefore, we reject the null and conclude that the fourth degree polynomial is significantly better than the second degree polynomial. (Note that the fourth-degree polynomial looks like the LOESS model that performed much better.)
+
+6. Interpret the following model that looks at the proportion of the national parliament that is women as a function of GDP per capita and whether the country is a democracy.
+
+```{r, echo=F, fig.width=4.5, fig.height=3, fig.align='center', cache=T, warning=F}
+countries_2010$is_democracy <- as.factor(countries_2010$v2x_polyarchy > 0.5)
+
+countries_2010_with_dem <- countries_2010[!is.na(countries_2010$is_democracy),]
+
+lm3 <- lm(`Seats held by women in national parliament, as of February (%)` ~ 
+            log2(`GDP per capita (US dollars)`) * is_democracy, countries_2010_with_dem)
 summary(lm3)$coefficients
 
-ggplot(countries, aes(x=log(mad_gdppc, 2), y = spi_ospi, col = as.factor(bmr_dem))) + 
+ggplot(countries_2010_with_dem, aes(x=log2(`GDP per capita (US dollars)`), y = `Seats held by women in national parliament, as of February (%)`, 
+                           col = is_democracy)) + 
   geom_point() + 
   stat_smooth(method="lm",
-              formula = y~x)
-
-log(median(countries$mad_gdppc, na.rm = T))
+              formula = y~x) + 
+  theme_bw() + 
+  labs(col="Democracy?") + 
+  ylab("National parliament % women")
 ```
-At a log GDP per capita of 0 (an essentially useless interpretation), being a democracy is significantly associated (p-value < $10^{-3}$) with a 25.5 point lower OSPI than non-democracies.  However, a doubling in GDP per capita is associated with a 5.14 point increase in OSPI for non-democracies while it is associated with a 7.88 point increase in OSPI for democracies.  Thus, at a GDP per capita of \$11,995 (the median of the data set), being a democracy is associated with a $2.74\cdot\log(11995.19, 2) - 25.5=11.6$ point higher OSPI than non-democracies with the same GDP per capita.
 
-6. Perform a formal hypothesis test to determine whether the previous model performs significantly better at predicting the overall social progress index than a model without the interaction term.
+In non-democracies, a doubling in GDP per capita is significantly associated with a 1.3\% decrease in the proportion of the parliament that is women. In democracies, a doubling in GDP per capita is significantly associated with a -1.3+3.2=1.9\% increase in the proportion of parliament that is women.
 
-```{r, cache=T, warning=FALSE}
-lm4 <- lm(spi_ospi~log(mad_gdppc, 2) + as.factor(bmr_dem), countries)
-anova(lm4, lm3)
-```
-In an ESS $F$-test of $H_0: \beta_{\log(\textrm{GDP per capita}, 2) \cdot \textrm{Democracy}}=0$ (the interaction term provides no predictive power) vs $H_a: \beta_{\log(\textrm{GDP per capita}, 2) \cdot \textrm{Democracy}}\neq0$ (the interaction term provides some predictive power), we get an $F$-statistic of 26.068 for an $F_{1, 149}$ distribution, yielding a p-value of $<10^{-6}$.  Therefore, we reject the null and conclude that the interaction between democracy status and log GDP per capita adds predictive ability to the model.  (Note that when we have a nested model where the only thing that changes is a single term, the ESS $F$-test should have the same significance as the $t$-test for that term by itself, as it does here.)
+\newpage
 
-# Everything is just a linear model
+# ANOVA as a linear model
 
-Let $Y_{ij}$ be data point $j$ from group $i$ where there are $k$ groups with $n_i$ data points in group $i$.  Imagine we run an ANOVA as well as an $F$-test for overall significance of a regression model with only the categories as predictors.  Recall the original ANOVA $F$-statistic: $$\frac{\sum_{i=1}^kn_i(\bar{Y}_i-\bar{Y})^2/(k-1)}{\sum_{i=1}^k\sum_{j=1}^{n_i}(Y_{ij}-\bar{Y_i})^2/(n-k)}$$ and the overall regression $F$-statistic: $$\frac{\sum_{i,j}(\hat{Y}_{ij}-\bar{Y})^2/p}{\sum_{i,j}(Y_{ij}-\hat{Y}_{ij})^2/(n-p-1)}$$ where $p$ is the number of predictors (not including the intercept in the model).
+Let $Y_{ij}$ be data point $j$ from group $i$ where there are $k$ groups with $n_i$ data points in group $i$. Imagine we run an ANOVA as well as an $F$-test for overall significance of a regression model with only the categories as predictors. Recall the original ANOVA $F$-statistic: $$\frac{\sum_{i=1}^kn_i(\bar{Y}_i-\bar{Y})^2/(k-1)}{\sum_{i=1}^k\sum_{j=1}^{n_i}(Y_{ij}-\bar{Y_i})^2/(n-k)}$$ and the overall regression $F$-statistic: $$\frac{\sum_{i,j}(\hat{Y}_{ij}-\bar{Y})^2/p}{\sum_{i,j}(Y_{ij}-\hat{Y}_{ij})^2/(n-p-1)}$$ where $p$ is the number of predictors (not including the intercept in the model).
 
 1. What is $p$ in this case?
 
@@ -182,7 +229,7 @@ We have $k$ groups, but one will be set as the baseline (intercept), so we have 
 
 2. What is $\hat{Y}_{ij}$?  Why is this the case?
 
-The estimate $\hat{Y}_{ij}=\bar{Y_i}$ because the only non-zero values in $\vec{X_{ij}}$ for all $(\vec{X_{ij}},Y_{ij})$ in group $i$ are a 1 in the $i^{th}$ position if $i\neq 1$ and a single 1 in the $1^{st}$ position.  Therefore, the predicted value will have to be the same for all $Y_{ij}$ in group $i$, and the prediction that minimizes the squared differences with respect to these observations is the mean of the group $\bar{Y_i}$.
+$\hat{Y}_{ij}=\bar{Y_i}$ because the only non-zero values in $\vv{X_{ij}}$ for all $(\vv{X_{ij}},Y_{ij})$ in group $i$ are a 1 in the $i^{th}$ position if $i\neq 1$ and a single 1 in the intercept position. Therefore, the predicted value will have to be the same for all $Y_{ij}$ in group $i$, and the prediction that minimizes the squared differences with respect to these observations is the mean of the group $\bar{Y_i}$.
 
 3. Show that the two $F$-statistics are equal.
 
@@ -193,6 +240,7 @@ $$\begin{aligned}
 &=\frac{\sum_{i=1}^kn_i(\bar{Y}_i-\bar{Y})^2/(k-1)}{\sum_{i=1}^k\sum_{j=1}^{n_i}(Y_{ij}-\bar{Y_i})^2/(n-k)}
 \end{aligned}$$
 
+\newpage
 
 # Simpson's simulation
 
@@ -204,18 +252,18 @@ library(knitr)
 library(dplyr)
 
 n = 10
-value = rnorm(n, 5, 2)
+value = round(rnorm(n, 5, 2), 1)
 category = as.factor(sample(c(1,2,3), n, replace = T))
-df <- data.frame(Response = case_when(category == "1" ~ 3,
+df <- data.frame(Response = round(case_when(category == "1" ~ 3,
                                       category == "2" ~ 7,
-                                      category == "3" ~ 2) * value + rnorm(n, 0, 5),
+                                      category == "3" ~ 2) * value + rnorm(n, 0, 5), 1),
                  Category=category,
                  Value=value)
 
 kable(df)
 ```
 
-```{r, cache=T}
+```{r, cache=T, echo=F}
 lm_sim <- lm(Response ~ Category * Value, df)
 model_matrix_out = model.matrix(lm_sim)
 attr(model_matrix_out, "assign") <- NULL
@@ -224,7 +272,7 @@ attr(model_matrix_out, "contrasts") <- NULL
 print(model_matrix_out)
 ```
 
-2. Without looking at the code that generated the data, for each of the pairs of plots below, determine what model should be fit to best describe the data.
+2. For each of the pairs of plots below, determine what model should be fit to best describe the data (e.g., `response ~ x^2 + category`).
 
 ```{r, echo=F, cache=T, warning=F, fig.height=3.5}
 library(gridExtra)
@@ -261,8 +309,9 @@ plot2 <- ggplot(df, aes(x = x, y = response, color = category)) +
 grid.arrange(plot1, plot2, ncol = 2, widths=c(0.8,1))
 
 # Correctly fit model
-summary(lm(response ~ x + category, df))$coefficients
+# summary(lm(response ~ x + category, df))$coefficients
 ```
+
 Because each group appears to have a similar slope but distinct intercept, we should use `response ~ x + category`.
 
 ```{r, echo=F, cache=T, warning=F, fig.height=3.5}
@@ -296,12 +345,13 @@ plot2 <- ggplot(df, aes(x = x, y = response, color = category)) +
 grid.arrange(plot1, plot2, ncol = 2, widths=c(0.8,1))
 
 # Correctly fit model
-summary(lm(response ~ x * category, df))$coefficients
+# summary(lm(response ~ x * category, df))$coefficients
 ```
+
 Because each group appears to have a different slope, we should use `response ~ x * category`.
 
 3. Name a reason to avoid fitting many interaction terms right from the beginning.
 
-Fitting more terms (especially with little predictive power) increases overfitting and increases your estimated standard error (since $\hat{\sigma}^2=\textrm{SSE}/(n-p-1)$).  Therefore, you will lose significance for the things that actually matter, and you will reduce the ability of your model to predict on new data.
+Fitting more terms (especially with little predictive power) increases overfitting and increases your estimated standard error (since $\hat{\sigma}^2=\textrm{SSE}/(n-p-1)$). Therefore, the slopes that actually matter will lose significance, and the model will be worse at fitting new data.
 
 

@@ -1,2 +1,5 @@
 *.DS_Store
 *.Rhistory
+*.log
+*_cache*
+*_files*

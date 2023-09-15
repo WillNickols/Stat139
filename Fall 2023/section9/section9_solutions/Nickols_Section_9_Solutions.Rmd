@@ -1,9 +1,16 @@
 ---
-output: pdf_document
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
 header-includes:
-   - \usepackage{tcolorbox}
-   - \usepackage{fancyhdr}
-   - \usepackage[utf8]{inputenc}
+- \usepackage{tcolorbox}
+- \usepackage{fancyhdr}
+- \usepackage[utf8]{inputenc}
+- \usepackage{wrapfig}
+- \usepackage{amsmath}
+- \usepackage{booktabs}
+- \usepackage{esvect}
 urlcolor: blue
 ---
 
@@ -14,70 +21,123 @@ urlcolor: blue
 \rfoot{Page \thepage}
 
 # Announcements
-- Make sure to sign in on the [google form](https://forms.gle/JGvZP8CPUhaefnLT6)
-- Pset 8 due November 11 at 5 pm
-- Midterm 2 November 11 through November 18
-- No section next week or the week after
-- Last section on November 29.
 
-# Decision Tree Algorithms
+\begin{wrapfigure}{r}{0.12\textwidth}
+  \centering
+    \vspace*{-1.3cm}
+    \includegraphics[width=\linewidth]{section_qr_code.png}
+\end{wrapfigure}
 
-Consider a prediction problem where we want to predict $Y_i$ from a single $X_{i}$.  Recall the heuristic we used to describe how a decision tree decides where to split a node: consider many possible split points $x$ from $\min(\{X_{i}:i\in1,...n\})$ to $\max(\{X_{i}:i\in1,...n\})$ and calculate the SSE for each $$\sum_{i:X_{i}<x}(Y_i-\bar{Y}_{\textrm{left}})^2+\sum_{i:X_{i}\geq x}(Y_i-\bar{Y}_{\textrm{right}})^2$$ where $\bar{Y}_{\textrm{left}}$ is the mean of the $Y_i$ for $i$ such that $X_{i}<x$ (and analogously for $\bar{Y}_{\textrm{right}}$).  Then, choose the $x$ that minimizes this SSE.  This is a nice story, but the implementation is a bit more clever.
+Make sure to sign in on the [google form](https://forms.gle/xm1DfzuZFNcWU6fH8) (I send a list of which section questions are useful for which pset questions afterwards)
 
-1. Consider an algorithm that did what was described above, and suppose that it divided the interval from $\min(\{X_{i}:i\in1,...n\})$ to $\max(X_{i}:i\in1,...n\})$ into $k$ equal segments.  Give a reason this would perform suboptimally when $n<k$ and a different reason it would perform suboptimally when $n>k$.  How many additions, subtractions, multiplications, and divisions (where each operation only involves two numbers) would be required to choose the best split?  (Note that becuase we're only concerned with the algorithm here, we'll treat both the $X_i$ and $Y_i$ as fixed.)
+Pset 9 due Friday 11/17
 
-When $n<k$, we are considering too many splits: there will be multiple points evaluated that give the same SSE, so we are wasting computation.  When $n>k$, some intervals will contain multiple $X_{i}$, so we are missing splits that could potentially be better than any we've considered.  With this method, to calculate the SSE for a single split point, we would need $n-2$ additions and $2$ divisions to calculate the group means, and we would need $n$ subtractions, $n$ multiplications, and $n-1$ additions.  Total, we would need $k(2n-3)$ additions, $kn$ subtractions, $kn$ multiplications, and $2k$ divisions to evaluate all the split points.
+# Introductions
+- One question or thought related to lecture last week (Decision trees, bagging, random forests)
 
-2. A better idea would be to only consider our observed $X_{i}$ (or the average between consecutive $X_{i}$) as potential split points.  How many additions, subtractions, multiplications, and divisions would be required to choose the best split now?  (Assume that at least one data point is in the "left" group and at least one is in the "right" group.)
+```{r, echo=F, warning=F, message=F, cache=F}
+list.of.packages <- c("ggplot2", "randomForest", "rpart", "rpart.plot", "dplyr", "reshape2")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
 
-There are now $n-1$ split points we have to consider, so we can apply the results from above to show that we would need $(n-1)(2n-3)$ additions, $(n-1)n$ subtractions, $(n-1)n$ multiplications, and $2(n-1)$ divisions to evaluate all the split points.  Note that if $k<n-1$ in the last problem, it would have taken fewer operations, but it might have missed the best split.
+library(ggplot2)
+library(randomForest)
+library(dplyr)
+library(rpart)
+library(rpart.plot)
+library(reshape2)
+```
 
-3. We can still do better!  Let $L_s$ (left sum) be the sum of the $Y_i$ for the smallest $s$ $X_{i}$, and let $R_s$ (right sum) be the sum of the $Y_i$ for the rest of the data points.  Let $L'_s$ and $R_s'$ be the corresponding means.  Show that the $\textrm{SSE}$ can be written in terms of a constant (a piece that doesn't change with $s$) and a piece that only depends on $L'_s$, $R_s'$, and $s$ (and the constants $n$ and $\bar{Y}$).  Next, find a simple equation for $L_{s+1}$, $R_{s+1}$, $L_{s+1}'$, and $R_{s+1}'$ in terms of $L_{s}$ and $R_{s}$.  Finally, determine how many additions, subtractions, multiplications, and divisions would be required to choose the best split.  Hint for the first part: Use (twice) the fact that 
-$$\sum_{i=1}^n(Y_i - \bar Y)^2 = \sum_{i=1}^n(Y_i-c)^2 - n(c-\bar Y)^2$$
+# Bagging and counting
 
-First part:
-$$\begin{aligned}\textrm{SSE}&=\sum_{i:X_{i}<X_{(s+1)}}(Y_i-L'_s)^2+\sum_{i:X_{i}\geq X_{(s+1)}}(Y_i-R_s')^2\\
-&=\sum_{i:X_{i}<X_{(s+1)}}(Y_i-\bar{Y})^2 - s(\bar{Y}-L'_s)^2+\sum_{i:X_{i}\geq X_{(s+1)}}(Y_i-\bar{Y})^2 - (n-s)(\bar{Y}-R_s')^2\\
-&=\sum_{i=1}^n(Y_i-\bar{Y})^2 - s(\bar{Y}-L'_s)^2 - (n-s)(\bar{Y}-R_s')^2
-\end{aligned}$$
+In bagging, data points are bootstrapped and used to build overfit decision trees. By taking the average of these decision trees, we reduce the variance of predictions relative to a single tree built on all the data. The reason the trees are different is that they incorporate different data points; trees built from the same data points will be the same. Therefore, knowing how many data points overlap between bootstrap samples gives a rough measure of how different the trees will be.
 
-Therefore, we simply need to iterate until we find the largest $s(\bar{Y}-L'_s)^2 + (n-s)(\bar{Y}-R'_s)^2$.
+1. Suppose we bootstrap $n$ data points from our original $n$ data points. Find the expected number of unique bootstrapped data points. Use the fact that $\left(1-\frac{1}{n}\right)^n\approx e^{-1}$ for large $n$ to approximate the expected number. (Hint: Think of the number of unique data points as a sum of indicators for each data point being unique. Also, recall that for $r<1$, $\sum_{j=1}^{n}r^{j-1}=\frac{1-r^n}{1-r}$)
 
-Second part: At each step, use the following update rules:
+Let $X$ be the number of unique bootstrapped data points and $I_i$ be an indicator that draw $i$ is unique.
 
-Left sum and mean updates: $$L_{s+1}\leftarrow L_s + Y_{s+1}, L_{s+1}'\leftarrow \frac{L_{s+1}}{s+1}$$
-Right sum and mean updates: $$R_{s+1}\leftarrow R_s - Y_{s+1}, R_{s+1}'\leftarrow \frac{R_{s+1}}{s-1}$$
-Third part: 
+$$\begin{aligned}E(X)&=E\left(\sum_{i=1}^nI_i\right)\\
+&=\sum_{i=1}^nP(\textrm{draw } i \textrm{ is unique})\\
+&=\sum_{i=1}^n\left(\frac{n-1}{n}\right)^{i-1}\\
+&=\frac{1-\left(\frac{n-1}{n}\right)^n}{1-\left(\frac{n-1}{n}\right)}\\
+&=n\left(1-\left(\frac{n-1}{n}\right)^n\right)\\
+&\approx n(1-e^{-1})\end{aligned}$$
+where the second equality is by the fundamental bridge and the third is from the birthday problem.
 
-For each $s$, we need to calculate and store $$s(\bar{Y}-L'_s)^2 + (n-s)(\bar{Y}-R'_s)^2$$
+```{r, include=F, cache=T}
+n <- 1000
+x <- replicate(100000, length(unique(sample(1:n, n, replace=T))))
+mean(x)
+n * (1 - ((n - 1)/n)^n)
+n * (1 - exp(-1))
+```
 
-Our first left and right sums take $n-2$ additions together, and the left and right means take $2$ divisions together.  Then, each of the $n-2$ update-calculate-store steps takes $3$ additions, $5$ subtractions, $2$ divisions, and $4$ multiplications.  Thus, total, we would need $n-2 + 3(n-2)$ additions, $5(n-2)$ subtractions, $4(n-2)$ multiplications, and $2+2(n-2)$ divisions to evaluate all the split points.  Notice that the number of computations has gone from a quadratic in $n$ to linear in $n$!
+2. What is the expected proportion of data points overlapping between two bootstrap samples of $n$ items each (i.e., the proportion of data points in one bootstrap sample that are also in the other)?
 
-You can see the actual R implementation [at this link](https://github.com/cran/rpart/blob/897af3116689df2def91911675daede154f18837/src/anova.c)!
+Let $X$ be the number of overlaps and $I_i$ be an indicator of whether the $i^{th}$ data point in the first bootstrap sample is in the second bootstrap sample.
+
+$$\begin{aligned}E(X)&=E\left(\sum_{i=1}^nI_i\right)\\
+&=\sum_{i=1}^nP(\textrm{draw } i \textrm{ is in the other sample})\\
+&=\sum_{i=1}^n\left(1-\left(\frac{n-1}{n}\right)^{n}\right)\\
+&=n\left(1-\left(\frac{n-1}{n}\right)^n\right)\\
+&\approx n(1-e^{-1})\end{aligned}$$
+where the third equality is from the fact that the probability of draw $i$ being in the other sample is the same as $1$ minus the probability draw $i$ is not in the other sample.
+
+```{r, include=F, cache=T}
+n <- 1000
+x <- replicate(100000, sum(sample(1:n, n, replace=T) %in% sample(1:n, n, replace=T)))
+mean(x)
+n * (1 - exp(-1))
+```
+
+\newpage
 
 # Categorical decision trees
 
-In this class, we mainly look at decision trees as a non-parametric way of making a prediction about a continuous variable of interest.  However, another (probably more common) use of decision trees is for predicting categorical variables.  While looking at the sum of squares error is a reasonable way to build decision trees for continuous predictions, other methods can be more useful for categorical predictions.  This question will look at two such options.  Throughout this problem, imagine that we have a data set $\mathbf{X}$ ($n\times p$) and a set of true categories $\vec{Y}$ ($n\times 1$) with $k$ possible values ($k$ categories).
+In this class, we mainly look at decision trees as a non-parametric way of making a prediction about a continuous variable of interest. However, another (probably more common) use of decision trees is in predicting categorical variables. While looking at the sum of squared errors is a reasonable way to build decision trees for continuous predictions, other methods can be more useful for categorical predictions. This question will look at two such options.
 
-1. A first method involves calculating the entropy of the parent and child nodes.  Entropy is defined as:
-$$E=-\sum_{i=1}^kp_i\log_2p_i$$
-where $p_i$ is the proportion of the items in the node from class $i$.  (If $p_i=0$, we treat its $p_i\log_2p_i$ term as $0$ since $p_i\log_2p_i\rightarrow0$ as $p_i\rightarrow0$.)  When splitting using this metric, the parent node's entropy $E_{\textrm{Parent}}$ is calculated, and the weighted average of the children's entropies are calculated ($\frac{1}{n_{\textrm{Left}}}E_{\textrm{Left}}+\frac{1}{n_{\textrm{Right}}}E_{\textrm{Right}}$).  The split that yields the lowest entropy is chosen.  Show that the entropy of a node is minimized when the node is "pure" (there are only items of one class in the node), and show (for $k=2$) that the entropy of the node is maximized when there are an equal proportion of items from each class in the node.  (This second statement can be extended to show that the entropy is maximized when the distribution of classes in a node is uniform.)
+1. A first method involves calculating the entropy of the parent and child nodes. Entropy is defined as:
+$$E=-\sum_{i=1}^kp_i\log p_i$$
+where $p_i$ is the proportion of the items in the node from class $i$. (If $p_i=0$, we treat its $p_i\log_2p_i$ term as $0$ since $p_i\log_2p_i\rightarrow0$ as $p_i\rightarrow0$.)  When splitting using this metric, the parent node's entropy $E_{\textrm{Parent}}$ is calculated, and the weighted average of the children's entropies are calculated as $$\frac{1}{n_{\textrm{Left}}}E_{\textrm{Left}}+\frac{1}{n_{\textrm{Right}}}E_{\textrm{Right}}$$  The split that yields the lowest entropy is chosen. Show that the entropy of a node is minimized when the node is "pure" (there are only items of one class in the node).
 
-Minimzation: Because $0\leq p_i\leq 1$, $\log_2p_i$ is non-positive and 0 only when $p_i=1$.  Therefore, the entropy will be non-negative with $E=0$ only when $p_i=1$ for some $i$ and $p_j=0$ for the rest.
+Because $0\leq p_i\leq 1$, $\log p_i\leq 0$ with equality only when $p_i=1$. With $p_i=1$ for one entry and $p_i=0$ for the rest, the entropy is $0$. However, whenever there is a $p_i$ such that $0<p_i<1$, there will be a term $p_i\log p_i<0$, so the entropy will be positive since all the terms in the sum are at most 0. Thus, entropy is minimized when all items are in one class.
 
-Maximization: For $k=2$, $$E=-[p_1\log_2p_1+(1-p_1)\log_2(1-p_1)]$$ so $$E'=-\left[\frac{p_1}{p_1\ln(2)}+\log_2p_1-\frac{1-p_1}{(1-p_1)\ln(2)}-\log_2(1-p_1)\right]=\log_2(1-p_1)-\log_2(p_1)$$
-Setting this equal to $0$ shows that $p_1=0.5$.
+2. Show that the entropy of the node is maximized when there are equal proportions of items from each class in the node. Hint: Consider the function $g(p)=p\log p$. Also, you should use Jensen's inequality for sums: $$\frac{1}{k}\sum_{i=1}^kg(p_i)\geq g\left(\frac{1}{k}\sum_{i=1}^kp_i\right)$$ when $g$ is convex.
 
-2. Because calculating $\log$s can be computationally expensive, a more common method is to maximize the Gini value: $$G=\sum_{i=1}^kp_i^2$$ where $p_i$ is the proportion of the items in the node from class $i$.  Explain why the Gini value can be interpreted as the probability that a randomly chosen item in the node would be assigned its correct class when assigning classes randomly according to the proportions in the node.  Also, find when the Gini value is maximized and find when it is minimized for $k=2$.
+First, $g$ is convex because $g'(p)=1+\log(p)$ and $g''(p)=\frac{1}{p}>0$. Therefore, Jensen's inequality gives 
+$$\begin{aligned}\frac{1}{k}\sum_{i=1}^kg(p_i)\geq g\left(\frac{1}{k}\sum_{i=1}^kp_i\right)&\implies \frac{1}{k}\sum_{i=1}^k g(p_i)\geq g(1/k)\\
+&\implies E/k\leq -1/k\log(1/k)\\
+&\implies E\leq \log(k)\end{aligned}$$
+where the second implication is from plugging in the formula for entropy and using the definition of $g$. If we let $p_i=1/k$, we see that 
+$$\begin{aligned}E&=-\sum_{i=1}^kp_i\log p_i\\
+&=\sum_{i=1}^k-\frac{1}{k}\log(1/k)\\
+&=-\log(1/k)\\
+&=\log(k)\end{aligned}$$
+Thus, $p_i=1/k$ for all $i$ maximizes the entropy.
 
-We can interpret this as LOTP where we want $P(\textrm{Correct classification})$, so we use $$\sum_{i=1}^kP(\textrm{Correct classification}|\textrm{Class }i)P(\textrm{Class }i)$$
+3. Explain why these results match our intuition of when a node should be split or not.
 
-The probability of choosing an item of class $i$ from the node is $p_i$, and the probability of it being randomly assigned the (correct) class $i$ is also $p_i$, so this comes out to $G$.  Since the Gini value is always between 0 and 1, the Gini value is maximized when the node is pure (i.e. when $p_i=1$ for one of the classes and 0 for the rest).  Taking the derivative for the $k=2$ case gives $G'=2p_1-2(1-p_1)$, so setting this to $0$ gives $4p_1=2\implies p_1=p_2=0.5$.
+When a node is pure, there is no reason to split it, and its entropy is minimized, so we wouldn't split it. When a node contains an equal proportion of items from each category, its entropy is maximized, and we should split it.
 
-3. For a 2-class classification problem, plot the Entropy and Gini values on the same graph.
+4. Because calculating $\log$s can be computationally expensive, another method is to maximize the Gini value: $$G=\sum_{i=1}^kp_i^2$$ where $p_i$ is the proportion of the items in the node from class $i$. Explain why the Gini value can be interpreted as the probability that a randomly chosen item in the node would be assigned its correct class when assigning classes randomly according to the proportions in the node.
 
-```{r, warning=F}
-library(ggplot2)
+We can interpret this as LOTP where we want $P(\textrm{Correct classification})$, so we use $$P(\textrm{Correct classification})=\sum_{i=1}^kP(\textrm{Correct classification}|\textrm{Item in class }i)P(\textrm{Item in class }i)$$
+Then, $P(\textrm{Item in class }i)=p_i$ since we choose randomly according to the node proportions, and $P(\textrm{Correct classification}|\textrm{Item in class }i)=p_i$ since the probability of it being randomly assigned the (correct) class $i$ is also $p_i$, so the sum comes out to $G$.
+
+5. Find when the Gini value is maximized.
+
+$$1=\left(\sum_{i=1}^kp_i\right)^2=\sum_{i=1}^kp_i^2+2\sum_{i<j}p_ip_j\implies \sum_{i=1}^kp_i^2\leq 1$$ with equality when $p_ip_j=0$ for all $i\neq j$. This only occurs when one $p_i=1$ and the rest are $0$.
+
+6. Show that the Gini value is minimized when all classes have equal proportions in the node.
+
+Since $x^2$ is a convex function, Jensen's inequality shows $$\frac{1}{k}\sum_{i=1}^kp_i^2\geq \left(\frac{1}{k}\sum_{i=1}^kp_i\right)^2=1/k^2$$
+Multiplying both sides by $k$ gives $\sum_{i=1}^kp_i^2\geq 1/k$, and this has equality when $p_i=1/k$.
+
+7. Do we want to split a node with a high or low Gini value?
+
+We want to split a node with a low Gini value since this is when the node has equal proportions from each category. When the Gini is maximized at 1, the node is pure, and we don't want to split it. The following plot shows that the Gini index is minimized when the entropy is maximized for a 2-class node, consistent with us splitting nodes with high entropy and low Gini indices.
+
+```{r, cache=T, echo=F, fig.width=4.5, fig.height=3, fig.align='center', warning=F}
 p <- seq(0.001, 0.999, 0.001)
 entropy = -(p * log(p, 2) + (1-p) * log(1-p, 2))
 gini = p^2 + (1-p)^2
@@ -87,196 +147,220 @@ df = data.frame(p=rep(p, 2),
                 method=rep(c("Entropy", "Gini"), each=length(p)))
 
 ggplot(df, aes(x=p, y=value, color=method)) + 
-  geom_line(size=1.5) + 
-  theme_bw()
+  geom_line(linewidth=1.5) + 
+  theme_bw() + 
+  ylab("Value") + 
+  xlab("Class 1 proportion") + 
+  labs(color="Method")
 ```
+
+\newpage
 
 # The Entire Arboretum
 
-The packages `rpart` and `randomForest` will be the main workhorses of our decision trees and random forests.  The most important functions for us will be:
+The packages `rpart` and `randomForest` will contain most of the functions for decision trees and random forests. The most important functions for us will be:
 
-- `rpart(formula, data, control)` where `control` is something like `list(minsplit=1,cp=0,maxdepth=20)`, where `minsplit` says we want the node to be split if it has at least 1 observation; `cp` (complexity parameter) says we will accept any improvement in fit; and `maxdepth` is that maximum node depth.
+- `rpart(formula, data, control)` with `control` as `list(minsplit=1,cp=0,maxdepth=20)`, where `minsplit` says we want the node to be split if it has at least 1 observation; `cp` (complexity parameter) says we will accept any improvement in fit; and `maxdepth` is the maximum node depth.
 - `prune(tree, cp)` where `cp` is the complexity parameter.
 - `randomForest(formula, data, maxnodes, mtry, ntree)` where `mtry` is the number of variables randomly sampled as candidates at each split, and `ntree` is the number of trees to grow.
 
-This question will deal with a data set of country-level statistics from [this source](https://www.gu.se/en/quality-government/qog-data/data-downloads/standard-dataset) with an explanation of the data encoding found [here](https://www.qogdata.pol.gu.se/data/codebook_std_jan22.pdf).  
+These problems will deal with a dataset of country-level statistics from [UNdata](https://data.un.org/), [Varieties of Democracy](https://v-dem.net/data/the-v-dem-dataset/), and the [World Bank](https://data.worldbank.org/indicator/AG.LND.PRCP.MM).
 
-A few useful columns:
+```{r, cache=T, warning=FALSE, echo=F}
+countries <- read.csv("data/country_stats.csv", check.names = F)
+countries_2010 <- countries[countries$Year == 2010,]
 
-- `spi_ospi`: Overall social progress index on 0-100 scale
-- `mad_gdppc`: GDP per capita
-- `wdi_internet`: Percent of population using the internet
-- `wdi_birth`: Birth rate per 1000 people
-- `wdi_chexppgdp`: Current health expenditures as percent of GDP
-- `wdi_elerenew`: Percent of total electricity output that's renewable
-- `wdi_lifexp`: Life expectancy at birth
-- `wdi_wip`: Proportion of seats held by women in national parliaments
-- `wdi_popurb`: Percentage of total population that is urban
-- `wdi_imig`: Proportion of people born outside the country in which they live
+colnames(countries_2010) <- case_when(colnames(countries_2010) == "GDP per capita (US dollars)" ~ "GDP",
+                                        colnames(countries_2010) == "Urban population (percent)" ~ "Urban",
+                                        colnames(countries_2010) == "Population aged 60+ years old (percentage)" ~ "Elderly",
+                                        colnames(countries_2010) == "Arable land (% of total land area)" ~ "Arable",
+                                        colnames(countries_2010) == "Supply per capita (gigajoules)" ~ "Energy",
+                                        colnames(countries_2010) == "Unemployment rate - Total" ~ "Unemployment",
+                                        colnames(countries_2010) == "Tourist/visitor arrivals (thousands)" ~ "Tourists",
+                                        TRUE ~ colnames(countries_2010)
+                                        )
+```
 
-```{r, include=F}
-library(randomForest)
+
+```{r, include=F, cache=T}
 RMSE = function(y,yhat){
   SSE = sum((y-yhat)^2)
   return(sqrt(SSE/length(y)))  
 }
-
-library(rpart)
-library(rpart.plot)
-set.seed(139)
-
-countries <- read.csv("data/countries.csv")
-
-# All coefficients of interest
-lm1 <- lm(spi_ospi ~ mad_gdppc + wdi_internet + wdi_birth + wdi_chexppgdp + 
-                        wdi_elerenew + wdi_lifexp + wdi_wip + wdi_popurb + wdi_imig, countries)
-
-summary(lm1)
 ```
 
-1. Fit a complex regression tree to predict `spi_ospi` from the above predictors, plot the decision tree, and report the RMSE and $R^2$.  Use `minsplit=1, cp=0, maxdepth=20` in `rpart`.
+1. The following is a fit decision tree to predict GDP per capita along with RMSE and $R^2$ statistics for the tree's predictions relative to the true values. The decision tree uses `minsplit=1, cp=0, maxdepth=20` on the variables:
+- `Urban`: Percent of people living in urban areas
+- `Elderly`: Percent of people over the age of 60
+- `Arable`: Percent of total land area that is farmable
+- `Energy`: Gigajoules of energy produced per person
+- `Unemployment`: Unemployment rate as a percent
+- `Tourists`: Thousands of tourist/visitor arrivals
 
-```{r, warning=F}
+The 2010 US values for these variables are shown below. What is the US's estimated GDP per capita?
+
+```{r, cache=T, echo=F, fig.width=8, fig.height=4, fig.align='center', warning=F}
+set.seed(139)
+
 # Fit tree
-tree1 <- rpart(spi_ospi ~ mad_gdppc + wdi_internet + wdi_birth + wdi_chexppgdp + 
-                        wdi_elerenew + wdi_lifexp + wdi_wip + wdi_popurb + wdi_imig, 
-               countries, control = list(minsplit=1,cp=0,maxdepth=20))
+tree1 <- rpart(GDP ~ Urban + Elderly + Arable + Energy + Unemployment + Tourists, countries_2010,
+               control = list(minsplit=1,cp=0,maxdepth=20))
 
 # Plot tree
 rpart.plot(tree1)
 
 # RMSE
-RMSE(countries$spi_ospi[!is.na(countries$spi_ospi)], 
-     predict(tree1, new=countries)[!is.na(countries$spi_ospi)])
+rmse_val <- RMSE(countries_2010$GDP[!is.na(countries_2010$GDP)], 
+     predict(tree1, new=countries_2010)[!is.na(countries_2010$GDP)])
 
 # Rsq
-cor(countries$spi_ospi[!is.na(countries$spi_ospi)], 
-    predict(tree1, new=countries)[!is.na(countries$spi_ospi)])^2
+rsq <- 1 - sum((countries_2010$GDP[!is.na(countries_2010$GDP)] - 
+    predict(tree1, new=countries_2010)[!is.na(countries_2010$GDP)])^2) / 
+  sum((countries_2010$GDP[!is.na(countries_2010$GDP)] - 
+        mean(countries_2010$GDP[!is.na(countries_2010$GDP)]))^2)
+
+c("RMSE" = round(rmse_val, 3), "R2" = round(rsq, 3))
 ```
 
-2. Fit a well-pruned regression tree to predict `spi_ospi` from the above predictors, plot the tree, and report the RMSE and $R^2$.  Start with `minsplit=1, cp=0, maxdepth=20)` in `rpart` and use the default 10-fold cross-validation to prune based on `cp`.  Note: `rpart` automatically performs 10-fold CV, and the best `cp` can be determined from a tree with the command `tree1$cptable[,"CP"][which.min(tree1$cptable[,"xerror"])]`
+```{r, echo=F, cache=T}
+df_subset <- countries_2010[countries_2010$Country == "United States of America", c("Urban", "Elderly", "Arable", "Energy", "Unemployment", "Tourists")]
+rownames(df_subset) <- NULL
+knitr::kable(df_subset)
+```
+We step right (Energy >= 91), then right (Urban >= 79), then left (Elderly < 19), then left (Arable >= 1.4) to get \$31,000 (the true value is \$30678).
 
-```{r}
+2. The following is a well-pruned regression tree to predict GDP per capita from the predictors above. The model starts with `minsplit=1, cp=0, maxdepth=20` and uses 10-fold cross-validation to prune based on the complexity parameter `cp`. Interpret the differences between the previous tree and the pruned one. What is the US's estimated GDP per capita?
+
+```{r, cache=T, echo=F, fig.width=8, fig.height=4, fig.align='center', warning=F}
+
 tree2 = prune(tree1,cp = tree1$cptable[,"CP"][which.min(tree1$cptable[,"xerror"])])
 
 rpart.plot(tree2)
 
 # RMSE
-RMSE(countries$spi_ospi[!is.na(countries$spi_ospi)], 
-     predict(tree2, new=countries)[!is.na(countries$spi_ospi)])
+rmse_val <- RMSE(countries_2010$GDP[!is.na(countries_2010$GDP)], 
+     predict(tree2, new=countries_2010)[!is.na(countries_2010$GDP)])
 
 # Rsq
-cor(countries$spi_ospi[!is.na(countries$spi_ospi)], 
-    predict(tree2, new=countries)[!is.na(countries$spi_ospi)])^2
+rsq <- 1 - sum((countries_2010$GDP[!is.na(countries_2010$GDP)] - 
+    predict(tree2, new=countries_2010)[!is.na(countries_2010$GDP)])^2) / 
+  sum((countries_2010$GDP[!is.na(countries_2010$GDP)] - 
+        mean(countries_2010$GDP[!is.na(countries_2010$GDP)]))^2)
+
+c("RMSE" = round(rmse_val, 3), "R2" = round(rsq, 3))
 ```
 
-Here, the tree doesn't actually change, but if we used something like `cp = 0.01`, we would get the following:
+The RMSE and $R^2$ are worse than in the first tree, but this is likely because the first model is overfit. The predicted US GDP per capita is now \$37000 since the last arable split is gone.
 
-```{r}
-treeextra = prune(tree1,cp = 0.01)
+3. The following is a set of random forest models to predict GDP per capita from the above predictors considering `mtry` 1 through 7 and `maxnodes` 2, 5, 10, 20, and 40 with `ntree=200`. The plot shows the $R^2$ of the out-of-bag predictions versus the true values for each parameter combination. Choose the best `mtry` and `maxnodes`. 
 
-rpart.plot(treeextra)
-
-# RMSE
-RMSE(countries$spi_ospi[!is.na(countries$spi_ospi)], 
-     predict(treeextra, new=countries)[!is.na(countries$spi_ospi)])
-
-# Rsq
-cor(countries$spi_ospi[!is.na(countries$spi_ospi)], 
-    predict(treeextra, new=countries)[!is.na(countries$spi_ospi)])^2
-```
-
-3. Fit a well-tuned random forest model to predict `spi_ospi` from the above predictors considering `mtry = c(2,3,4)` and `maxnodes = c(3,5,10)` with `ntree=200`. Report RMSE and $R^2$ as well as the best `mtry` and best `maxnodes`.  
-
-```{r, warning=F}
-param_grid = expand.grid(mtries = c(2, 3, 4), maxnodes = c(3, 5, 10))
-
-curRMSE <- Inf
-
-bestmtry <- 0
-bestnode <- 0
-
+```{r, cache=T, echo=F, fig.width=4.5, fig.height=3, fig.align='center', warning=F}
 # Random forest doesn't handle missing data well so keep only observations with no NAs
-eval_subset = countries[rowSums(is.na(countries[,c("spi_ospi", "mad_gdppc", 
-                                                   "wdi_internet", "wdi_birth", 
-                                                   "wdi_chexppgdp", "wdi_elerenew", 
-                                                   "wdi_lifexp", "wdi_wip", 
-                                                   "wdi_popurb", "wdi_imig")]))==0,]
+countries_subset <- countries_2010[!is.na(log2(countries_2010$`GDP`)) & 
+                                   !is.na(countries_2010$`Urban`) &
+                                   !is.na(countries_2010$Elderly) &
+                                     !is.na(countries_2010$`Arable`) &
+                                     !is.na(countries_2010$`Energy`) &
+                                     !is.na(countries_2010$`Unemployment`) &
+                                     !is.na(countries_2010$`Tourists`),]
 
-for (i in nrow(param_grid)) {
+param_grid = expand.grid(mtries = 1:7, maxnodes = c(2, 5, 10, 20, 40))
+
+RMSEs <- vector(length = nrow(param_grid))
+rsqs <- vector(length = nrow(param_grid))
+
+for (i in 1:nrow(param_grid)) {
   mtry = param_grid[i, 1]
   maxnode = param_grid[i, 2]
   
   # Fit the random forest
-  rf <- randomForest(spi_ospi ~ mad_gdppc + wdi_internet + wdi_birth + wdi_chexppgdp + 
-                       wdi_elerenew + wdi_lifexp + wdi_wip + wdi_popurb + wdi_imig, 
-                     countries, maxnodes=maxnode, mtry=mtry, ntree=200, na.action = na.omit)
+  rf <- randomForest(GDP ~ Urban + Elderly + Arable + Energy + Unemployment + Tourists, 
+                     countries_subset, maxnodes=maxnode, mtry=mtry, ntree=200, na.action = na.omit)
   
   # If it has better RMSE, keep it as the best
-  if (RMSE(eval_subset$spi_ospi, predict(rf, new=eval_subset)) < curRMSE) {
-    bestnode <- maxnode
-    bestmtry <- mtry
-    rfsave <- rf
-  }
+  RMSEs[i] <- RMSE(countries_subset$GDP, predict(rf, new=countries_subset))
+  rsqs[i] <- 1 - sum((countries_subset$GDP[!is.na(countries_subset$GDP)] - 
+    predict(rf, new=countries_subset)[!is.na(countries_subset$GDP)])^2) / 
+  sum((countries_subset$GDP[!is.na(countries_subset$GDP)] - 
+        mean(countries_subset$GDP[!is.na(countries_subset$GDP)]))^2)
 }
 
-# RMSE
-RMSE(eval_subset$spi_ospi, predict(rfsave, new=eval_subset))
+fitting_df <- data.frame(param_grid, RMSEs, rsqs)
 
-# Rsq
-cor(eval_subset$spi_ospi, predict(rfsave, new=eval_subset))^2
 
-bestmtry
-bestnode
+rfsave <- randomForest(GDP ~ Urban + Elderly + Arable + Energy + Unemployment + Tourists, 
+                     countries_subset, maxnodes=fitting_df$maxnodes[which.max(fitting_df$rsqs)], 
+                     mtry=fitting_df$mtries[which.max(fitting_df$rsqs)], ntree=200, na.action = na.omit)
+
+ggplot(fitting_df, aes(x=as.factor(mtries), y=as.factor(maxnodes), fill= rsqs)) + 
+  geom_tile() + 
+  theme_bw() + 
+  xlab("mtry") + 
+  ylab("maxnodes") + 
+  labs(fill = "R2")
 ```
-4. Interpret the relationship of `spi_ospi` with `wdi_lifexp` in the first tree and the best random forest model through predictions on a single plot.  Describe what you see in a few sentences.
+Any random forest with a maximum of 40 nodes and at least 2 included predictors sampled at each split would work.
 
-```{r}
+4. The following plot shows how GDP per capita changes with gigajoules of energy produced per person holding the other variables constant. We estimate just this effect by, for each country, replacing the `Energy` term with the range of energies in consideration and then averaging over the countries for each value in our range. We are comparing our decision tree from question 1, our best random forest from question 3, and a decision tree fit only on `Energy`. Describe what you see in a few sentences.
+
+```{r, cache=T, echo=F, fig.width=6.5, fig.height=3.5, fig.align='center', warning=F}
 # Copy original data 
-dummy_df = eval_subset
+dummy_df = countries_subset
 
 # Sequence of possible life expectancies
-dummylifexp = seq(min(eval_subset$wdi_lifexp), max(eval_subset$wdi_lifexp), 0.1)
+dummy_energy = seq(min(countries_subset$Energy), max(countries_subset$Energy), 0.1)
 
 # Show original points
-plot(spi_ospi ~ wdi_lifexp, data=countries, col=rgb(0.5,0.5,0.5,0.5), cex=0.5, pch=16)
+tree3 <- rpart(GDP ~ Energy, countries_2010, control = list(minsplit=1,cp=0,maxdepth=20))
 
 # Get predictions on the dummy data
-yhats=matrix(NA,nrow=nrow(dummy_df),ncol=length(dummylifexp))
-yhats2=matrix(NA,nrow=nrow(dummy_df),ncol=length(dummylifexp))
+yhats=matrix(NA,nrow=nrow(dummy_df),ncol=length(dummy_energy))
+yhats2=matrix(NA,nrow=nrow(dummy_df),ncol=length(dummy_energy))
+yhats3=matrix(NA,nrow=nrow(dummy_df),ncol=length(dummy_energy))
 for(i in 1:nrow(dummy_df)){
   # For each original data points, test all dummy life expectancies
-  rows=dummy_df[rep(i,length(dummylifexp)),]
-  rows$wdi_lifexp=dummylifexp
+  rows=dummy_df[rep(i,length(dummy_energy)),]
+  rows$Energy=dummy_energy
   yhat = predict(tree1,new=rows)
   yhats[i,]=yhat
   yhat2 = predict(rfsave, new=rows)
   yhats2[i,]=yhat2
+  yhat3 = predict(tree3, new=rows)
+  yhats3[i,]=yhat3
 }
 
 # Take the mean over the predicted OSPI at each dummy life expectancy
-mean_yhat = apply(yhats,2,mean)
+mean_yhat = apply(yhats, 2, mean)
 mean_yhat2 = apply(yhats2, 2, mean)
+mean_yhat3 = apply(yhats3, 2, mean)
 
-# Tree in brown
-lines(mean_yhat~dummylifexp,col=rgb(0.5,0.25,0,1),lwd=3)
+dummy_results <- data.frame("Energy" = dummy_energy, "Tree (1)" = mean_yhat, 
+                            "Random forest (3)" = mean_yhat2, "Tree only Energy" = mean_yhat3, check.names = F)
 
-# Forest in green
-lines(mean_yhat2~dummylifexp,col=rgb(0,0.5,0,1),lwd=3)
+dummy_results <- melt(dummy_results, id.vars=c("Energy"))
+
+ggplot(countries_subset, aes(x=Energy, y=GDP)) + 
+  geom_line(data=dummy_results, aes(x=Energy, y=value, color = variable), linewidth=1)+
+  geom_point() + 
+  scale_y_continuous(trans = 'log', breaks=c(500, 1000, 2000, 5000, 10000, 20000, 50000, 100000)) + 
+  scale_x_continuous(trans = 'log', breaks=c(10, 20, 50, 100, 200, 500, 1000)) + 
+  theme_bw() + 
+  ylab("GDP per capita") + 
+  xlab("Energy supply per capita (gigajoules)") + 
+  labs(color="Model")
 ```
 
-The tree is in brown and the forest is in green.  As expected, the forest is more smooth than the single tree.  Neither seems to be capturing the very low and very high values particularly well, which suggests that other predictors are doing more of the work there.
+The tree using only `Energy` is most consistent with the observed data (and probably overfit) because the model can only use `Energy` as the splitting predictor. The other decision tree can split on other variables, so its reliance on the single variable `Energy` is not as strong. The random forest shows this even more clearly: because many splits don't even consider `Energy`, the trend is much less consistent with the energy supply alone, but the relationship is the smoothest.
 
-5. Which predictors are most important in the first tree and the best random forest?  How do they compare in relative importance?  
+5. Which predictors are most important in the first tree (left) and the best random forest (right)?  How do they compare in relative importance?  
 
-```{r}
+```{r, cache=T, echo=F, fig.width=5, fig.height=3.5, fig.align='center', warning=F}
 par(mfrow=c(1, 2))
 barplot(tree1$variable.importance, horiz=T, las=2, cex.names=0.5)
 barplot(sort(rfsave$importance[,1], decreasing = T), horiz=T, las=2, cex.names=0.5)
 ```
 
-In both models, a country's life expectancy is the largest predictor of the OSPI (though it is more important in the random forest than in the single tree).  The birth rate, access to the internet, and the GDP per capita are also important in both models though they differ in relative importance.
-
+The actual units on both of these are somewhat arbitrary (see the `rpart` and `randomForest` documentation for the details), but we see that energy consumption is the most important variable in both models; the urban and elderly populations are important; and the number of tourists, the unemployment rate, and proportion of arable land are the least important.
 
 
 

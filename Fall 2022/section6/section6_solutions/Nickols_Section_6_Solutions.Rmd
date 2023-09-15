@@ -1,9 +1,17 @@
 ---
-output: pdf_document
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
 header-includes:
-   - \usepackage{tcolorbox}
-   - \usepackage{fancyhdr}
-   - \usepackage[utf8]{inputenc}
+- \usepackage{tcolorbox}
+- \usepackage{fancyhdr}
+- \usepackage[utf8]{inputenc}
+- \usepackage{wrapfig}
+- \usepackage{amsmath}
+- \usepackage{booktabs}
+- \usepackage{esvect}
+urlcolor: blue
 ---
 
 \pagestyle{fancy}
@@ -90,37 +98,39 @@ ggplot(countries, aes(x=wdi_precip, y=wdi_araland)) +
 ```
 Setting the derivative of the fit line to 0 gives $\frac{\hat{\beta_1}}{-2\hat{\beta_2}}\approx1260$.  Therefore, the estimated proportion of arable land increases with increasing precipitation up to 1260 mm per year, after which it declines.  This makes sense because areas with either very little rainfall or a lot of rainfall are unlikely to have much productive farmland.
 
-3. Use the previous model to find the probability that a country with 1500 mm annual precipitation per year on average will have less than 10\% of its land arable.  
+3. Use the previous model to find the probability that a country with $X'$ mm annual precipitation per year on average will have less than $\tau$ percent of its land arable. Recall that $$T=\frac{Y'-\vv{X}_0^T\vv{\hat{\beta}}}{\hat{\sigma}\sqrt{1+\vv{X}_0^T(X^TX)^{-1}\vv{X}_0}}\sim t_{n-(p+1)}$$ where $\vv{X}_0$ is the 
+
+Let $\vv{X}_0^T=[1, X', X'^2]$.
+
+$$\begin{aligned}P(Y'<\tau)&=P\left(\frac{Y'-\vv{X}_0^T\vv{\hat{\beta}}}{\hat{\sigma}\sqrt{1+\vv{X}_0^T(X^TX)^{-1}\vv{X}_0}}<\frac{\tau-\vv{X}_0^T\vv{\hat{\beta}}}{\hat{\sigma}\sqrt{1+\vv{X}_0^T(X^TX)^{-1}\vv{X}_0}}\right)\\
+&=P\left(T<\frac{\tau-\vv{X}_0^T\vv{\hat{\beta}}}{\hat{\sigma}\sqrt{1+\vv{X}_0^T(X^TX)^{-1}\vv{X}_0}}\right)\\
+&=F_{t_{n-(p+1)}}\left(\frac{\tau-\vv{X}_0^T\vv{\hat{\beta}}}{\hat{\sigma}\sqrt{1+\vv{X}_0^T(X^TX)^{-1}\vv{X}_0}}\right)
+\end{aligned}$$
+
+For example, we can look at the probability a country with 1500 mm precipitation per year on average will have less than 10\% of its land arable.
 
 ```{r, cache=T}
 threshold = 10
 
-C = c(1, 1500, 1500^2)
+X_0 = c(1, 1500, 1500^2)
 
 # Using the null distribution, we can standardize the threshold and find the density below it
-pt((threshold - C %*% coef(lm2)) / 
-     (sqrt(t(C) %*% vcov(lm2) %*% C + summary(lm2)$sigma^2)), 
+pt((threshold - X_0 %*% coef(lm2)) / 
+     (sqrt(t(X_0) %*% vcov(lm2) %*% X_0 + summary(lm2)$sigma^2)), 
    lm2$df.residual)
 ```
 
 
 ```{r, include=F, cache=TRUE}
 # Check that this works as intended
-predict(lm2,newdata = data.frame(wdi_precip=1500),interval = "prediction")
-threshold = c(-7.61454, 44.1593)
+prediction <- predict(lm2,newdata = data.frame('wdi_precip'=1500, check.names = F),interval = "prediction")
+threshold = prediction[2:3]
 
 # These should threshold above 0.025 and 0.975 density 
-pt((threshold - as.vector(C %*% coef(lm2))) / 
-     as.vector(sqrt(t(C) %*% vcov(lm2) %*% C + summary(lm2)$sigma^2)), 
+pt((threshold - as.vector(X_0 %*% coef(lm2))) / 
+     as.vector(sqrt(t(X_0) %*% vcov(lm2) %*% X_0 + summary(lm2)$sigma^2)), 
    lm2$df.residual)
 ```
-The probability of a country with 1500 mm annual precipitation having below 10\% arable land is 0.264.  This answer is based on a multivariate extension of the prediction interval in which 
-
-$$\hat{Y}|\vec{C}\sim\mathcal{N}\left(\vec{C}^T\vec{\beta}, \sigma^2[\vec{C}^T(\mathbf{X}^T\mathbf{X})^{-1}\vec{C} + 1]\right)$$
-
-When we only have our sample parameters, we use the fact that
-$$\frac{\vec{C}^T\hat{\vec{\beta}}}{\sqrt{\hat{\sigma}^2[\vec{C}^T(\mathbf{X}^T\mathbf{X})^{-1}\vec{C} + 1]}}\sim t_{n-p-1}$$
-and we can use $t$-statistics of the form $$\frac{\tau-\vec{C}^T\hat{\vec{\beta}}}{\sqrt{\hat{\sigma}^2[\vec{C}^T(\mathbf{X}^T\mathbf{X})^{-1}\vec{C} + 1]}}$$
 
 4. Fit a LOESS model for the same data and compare its prediction accuracy to that of the previous model.
 

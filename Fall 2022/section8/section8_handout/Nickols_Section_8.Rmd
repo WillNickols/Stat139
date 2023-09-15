@@ -173,7 +173,7 @@ plot3 <- readRDS(file = "plot3.RDS")
 plot4 <- readRDS(file = "plot4.RDS")
 figure <- ggarrange(plotlist = list(plot1, plot2, plot3, plot4), nrow = 2, ncol = 2)+
   theme(plot.margin = margin(1,1,1,1, "cm"))
-annotate_figure(figure, left = textGrob("log(lambda)", rot = 90, vjust = 1, gp = gpar(cex = 1.3)),
-                  bottom = textGrob("betas", gp = gpar(cex = 1.3)))
+annotate_figure(figure, left = textGrob("betas", rot = 90, vjust = 1, gp = gpar(cex = 1.3)),
+                  bottom = textGrob("log(lambda)", gp = gpar(cex = 1.3)))
 
 ```

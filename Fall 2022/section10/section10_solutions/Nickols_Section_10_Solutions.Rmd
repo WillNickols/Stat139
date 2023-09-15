@@ -448,13 +448,13 @@ comparison_df
 
 The fixed effects with interactions is clearly the worst model: it actually just takes study 1 as the estimated effect and fits adjustments for the rest of the studies.  The raw means also does rather poorly with a higher standard error than the other methods.  Fixed effects with no interactions does the best when all the participants in all the studies are from the same distribution, but its standard error is higher when there are by-study differences.  Linear mixed effects performs very well in both scenarios, and the likelihood method also does rather well considering that it doesn't have any of the original data points.
   
-4. Under the random slopes model specified above, given a new $X$ from a new study, find the probability that its associated $Y$ value will be less than $\tau$.
+4. Under the random slopes model specified above but assuming an intercept of 0, given a new $X$ from a new study, find the probability that its associated $Y$ value will be less than $\tau$. You can leave your answer as a double integral.
 
 Conditioning on the group $\beta_i$ and applying the Law of Total Probability,
 
 $$\begin{aligned}
 P(Y<\tau)&=\int_{-\infty}^\infty P(Y<\tau|\beta_i)P(\beta_i)d\beta_i\\
-&= \int_{-\infty}^\infty \int_{-\infty}^\tau\frac{1}{\sqrt{2\pi}\sigma_Y}e^{-\frac{1}{2}\left(\frac{y-\beta_i}{\sigma_Y}\right)^2}\frac{1}{\sqrt{2\pi}\sigma_\beta}e^{-\frac{1}{2}\left(\frac{\beta_i-\beta}{\sigma_\beta}\right)^2}dyd\beta_i
+&= \int_{-\infty}^\infty \int_{-\infty}^\tau\frac{1}{\sqrt{2\pi}\sigma_Y}e^{-\frac{1}{2}\left(\frac{y-X\beta_i}{\sigma_Y}\right)^2}\frac{1}{\sqrt{2\pi}\sigma_\beta}e^{-\frac{1}{2}\left(\frac{\beta_i-\beta}{\sigma_\beta}\right)^2}dyd\beta_i
 \end{aligned}$$
 
 \newpage

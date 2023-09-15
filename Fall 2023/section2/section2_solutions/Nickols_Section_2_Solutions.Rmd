@@ -34,10 +34,10 @@ Pset 1 due Friday 9/22
 
 # Introductions (again)
 - Name
-- One question or thought related to lecture last week (ANOVA, $F$-test, ranks)
+- One question or thought related to lecture last week ($t$-test, $z$-test, ANOVA, $F$-test)
 
 ```{r, echo=F, warning=F, message=F, cache=F}
-list.of.packages <- c("ggplot2", "gridExtra", "MASS", "dplyr")
+list.of.packages <- c("ggplot2", "gridExtra", "dplyr")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
@@ -45,6 +45,87 @@ library(ggplot2)
 library(gridExtra)
 library(dplyr)
 ```
+
+# Country demographics
+
+We'll start by making last week's exploratory data analysis a bit more precise. These problems will deal with a data set of country-level statistics from [UNdata](https://data.un.org/) and [Varieties of Democracy](https://v-dem.net/data/the-v-dem-dataset/).
+
+
+1. We speculated that the Western African and Eastern African countries probably did not have a significant difference in means. Perform a formal $t$-test for the difference in population means between Western African and Eastern African countries. Recall that a formal test includes (1) the hypotheses, (2) the test statistic, (3) the p-value, and (4) the conclusion in the context of the problem.
+
+```{r, echo=F}
+countries <- read.csv("data/country_stats.csv", check.names = F)
+pop1 <- countries[countries$Year == 2010 & 
+                    countries$Region == "Western Africa",
+                  ]$`Population mid-year estimates (millions)`
+
+pop2 <- countries[countries$Year == 2010 & 
+                    countries$Region == "Eastern Africa",
+                  ]$`Population mid-year estimates (millions)`
+west_african <- pop1
+east_african <- pop2
+t.test(west_african, east_african)
+```
+Let $\mu_0$ be the mean population of countries in Western Africa and $\mu_1$ be the mean population of countries in Eastern Africa. We are testing $H_0$: $\mu_0=\mu_1$ vs $H_a:$ the two means are different. We get a $t$-statistic of $0.12$ with $24.7$ degrees of freedom for a two-sided $t$-test, which corresponds to a p-value of $0.90>0.05$, so we fail to reject the null and do not have sufficient evidence to conclude that the mean populations of Western African and Eastern African countries are different. (The confidence interval for the difference in means is $(-20.0, 22.5)$, which includes 0, consistent with the $t$-test.)
+
+2. Perform a formal $z$-test for the difference in the proportions of the populations that are nurses or midwives in the US versus the UK in 2010.
+
+```{r, echo=F}
+us_nurses_midwives <- countries$`Health personnel: Nurses and midwives (number)`[
+  countries$Country == "United States of America" & countries$Year ==  2010]
+us_pop <- countries$`Population mid-year estimates (millions)`[
+  countries$Country == "United States of America" & countries$Year ==  2010] * 1000000
+uk_nurses_midwives <- countries$`Health personnel: Nurses and midwives (number)`[
+  countries$Country == "United Kingdom" & countries$Year ==  2010]
+uk_pop <- countries$`Population mid-year estimates (millions)`[
+  countries$Country == "United Kingdom" & countries$Year ==  2010] * 1000000
+prop.test(c(us_nurses_midwives, uk_nurses_midwives), c(us_pop, uk_pop), correct = F)
+```
+Let $p_{\textrm{US}}$ be the proportion of the population that are nurses or midwives in the US and $p_{\textrm{UK}}$ be the equivalent proportion in the UK. We want to test $H_0: p_{\textrm{US}}=p_{\textrm{UK}}$ vs. $H_a:$ they are not equal. We get a $z$-statistic of $\sqrt{57941}=240.7$ which gives a p-value less than $2.2\times10^{-16}$, so we reject the null and conclude that the proportion of the population that are nurses and midwives is significantly higher in the US. Note that `prop.test` performs a $\chi^2$ test, so you need to take the square root of the test statistic to get the $z$-test test statistic.
+
+3. Suppose we wanted to test whether there was a change in the mean number of doctors per country between 2019 and 2020 (e.g., in response to COVID-19). What would be a good way to do so?
+
+We should use a paired $t$-test with pairing by country to check whether the mean difference in countries' doctor numbers between 2020 and 2019 is significantly non-zero. The $t$-test shows that the difference is not quite significant, but only 15 countries have data for both 2020 and 2019, so our test might just have not had enough power.
+```{r, echo=F}
+df_2019 <- data.frame(country=countries$Country[countries$Year == 2019],
+           doctors=countries$`Health personnel: Physicians (number)`[countries$Year == 2019])
+
+df_2020 <- data.frame(country=countries$Country[countries$Year == 2020],
+           doctors=countries$`Health personnel: Physicians (number)`[countries$Year == 2020])
+
+joined_df <- full_join(df_2019, df_2020, by=c("country"))
+joined_df <- joined_df[rowSums(is.na(joined_df)) == 0,]
+colnames(joined_df) <- c("Country", "2019 doctors", "2020 doctors")
+
+t.test(joined_df$`2020 doctors` - joined_df$`2019 doctors`)
+```
+
+4. Perform a formal analysis of variance for the difference in 2010 log GDP per capita by world region.
+
+```{r, echo=F}
+countries_2010 <- countries[countries$Year == 2010,]
+
+summary(aov(`GDP per capita (US dollars)`~Region, countries_2010))
+```
+Let $\mu_k$ be the mean GDP per capita of countries in region $k$ (indexed arbitrarily). We want to test $H_0$: $\mu_0=\mu_1=...=\mu_{22}$ vs $H_a$: the means are not all equal. We get an $F$-statistic of 12.84 for 21 and 187 degrees of freedom for a p-value of less than $2\times 10^{-16}$, suggesting that the mean GDPs per capita of different regions are not equal.
+
+5. Comment on the assumptions of the test.
+
+```{r, echo=F, warning=F}
+ggplot(countries_2010, aes(x=Region, y=log10(`GDP per capita (US dollars)`))) + 
+  geom_boxplot() + 
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+tmp <- by(log(countries_2010$`GDP per capita (US dollars)`), countries_2010$Region, var, na.rm=T)
+df <- data.frame(regions=names(tmp), variances=round(as.vector(tmp), 2),
+                 counts=as.vector(table(countries_2010$Region[!is.na(countries_2010$`GDP per capita (US dollars)`)])))
+colnames(df) <- c("Region", "Variance", "Number of countries")
+df
+```
+
+The GDPs are about symmetric, so normality is a reasonable assumption. The variances are quite different though (from 0.15 to 2.95; well beyond a 2x difference), so the equal variance assumption is violated. Independence probably does not hold either because the countries likely trade with each other, causing their GDPs to be correlated both within and between groups.
+
+\newpage
 
 # Manipulating new distributions
 
@@ -192,7 +273,7 @@ ggplot(df, aes(x=group, y=values)) +
   geom_jitter(color="black", size=1, alpha=0.9, width = 0.1)
 ```
 
-Even though the standard deviations are the same in both, what matters is the standard error, which is much lower in the second because of the increased sample size. The difference in sample means in the second comparison is about half that of the first comparison. However, the standard error of the second comparison is about $1/\sqrt{10}=0.316$ times the standard error of the first comparison, so the $t$-statistic is about 1.58 times as large in the second comparison. Therefore, the second will have the lower p-value.
+Even though the standard deviations are the same in both, what matters is the standard error, which is much lower in the second because of the increased sample size. The difference in sample means in the second comparison is about half that of the first comparison. However, the standard error of the second comparison is about $\sqrt{40/400}=0.316$ times the standard error of the first comparison, so the $t$-statistic is about 1.58 times as large in the second comparison. Therefore, the second will have the lower p-value.
 
 ```{r, cache=T}
 # Comparison 1
@@ -203,116 +284,6 @@ t.test(df$values[df$group == "Group 1" & df$comparison == "Comparison 1"],
 t.test(df$values[df$group == "Group 1" & df$comparison == "Comparison 2"],
        df$values[df$group == "Group 2" & df$comparison == "Comparison 2"])$p.value
 ```
-
-\newpage
-
-# Variance by decomposition
-
-Let $X\sim\textrm{Bin}(n,p)$ and $Y\sim\textrm{Bin}(m,p)$. Let $X+Y=r$.
-
-1. Find the variance of $X|r$ by using the variance of a known distribution (See 3.9.2 in the Stat 110 book for a hint).
-
-$X|r\sim \textrm{HGeom}(n,m,r)$, so by the variance of the hypergeometric we have:
-$$\textrm{Var}(X|r)=\frac{n+m-r}{n+m-1}\cdot\frac{nr}{n+m}\cdot\frac{m}{n+m}$$
-
-2. Find the variance of $X|r$ by using the fact that $\textrm{Var}(X+Y|r)=0$ and treating $X$ and $Y$ as the sum of Bernoulli random variables. Verify that the two answers are the same. (Hint: Once you get to the Bernoulli random variables, think about how knowing the sum is $r$ makes $p$ irrelevant.)
-
-First, note that the variance of a constant is 0, so $\textrm{Var}(X+Y|r)=0$. Each of $X$ and $Y$ can be decomposed into Bernoullis, and each of these have the same variance and covariance by symmetry. Therefore, $$0=\textrm{Var}(X+Y|r)=(n+m)\textrm{Var}(I_1|r)+2{n+m\choose 2}\textrm{Cov}(I_1,I_2|r)$$ Then, we can solve for the covariance: $\textrm{Cov}(I_1,I_2|r)=-\textrm{Var}(I_1|r)/(n+m-1)$. Conditioning on $r$, $P(I_1=1|r)=\frac{r}{n+m}$, so $$\textrm{Var}(I_1|r)=\frac{r}{n+m}\cdot\frac{n+m-r}{n+m}$$ and $$\textrm{Cov}(I_1,I_2|r)=-\frac{r}{n+m}\cdot\frac{n+m-r}{(n+m)(n+m-1)}$$
-Then, building up $X$ again, 
-$$\begin{aligned}
-\textrm{Var}(X|r)&=\textrm{Var}(\sum_{i=1}^nI_i)\\
-&=n\cdot\frac{r}{n+m}\cdot\frac{n+m-r}{n+m}-2{n\choose 2}\frac{r}{n+m}\cdot\frac{n+m-r}{(n+m-1)(n+m)}\\
-&=\frac{nr(n+m-r)}{(n+m)^2}\left[1-\frac{n-1}{n+m-1}\right]\\
-&=\frac{nmr(n+m-r)}{(n+m)^2(n+m-1)}
-\end{aligned}$$
-
-\newpage
-
-# Hypothesis testing on real data
-
-These problems will deal with a dataset of country-level statistics from [UNdata](https://data.un.org/) and [Varieties of Democracy](https://v-dem.net/data/the-v-dem-dataset/).
-
-```{r, echo=F}
-# Read in the data
-countries <- read.csv("data/country_stats.csv", check.names = F)
-```
-
-1. Suppose we want to test for a difference in mean 2010 GDP per capita between democracies and non-democracies. The following plots show the distributions. Which tests would be valid?
-
-```{r, echo=F, fig.width=5, fig.height=3, fig.align='center', cache=T, warning=F}
-countries$dem = countries$v2x_polyarchy > 0.5
-tmp_countries <- countries[countries$Year == 2010 & !is.na(countries$dem),]
-
-ggplot(tmp_countries, aes(x=`GDP per capita (US dollars)`, fill=dem)) + 
-  geom_histogram(alpha=0.4, position="identity", bins = 30) + 
-  xlab("GDP per capita") + 
-  ylab("Countries") + 
-  theme_bw() + 
-  labs(fill="Democracy")
-```
-
-An unpaired $t$-test, a rank-sum test, or a log-transformed $t$-test would all be reasonable. The rank-sum test and log-transformed $t$-test would account for the fact that the data is not Normally distributed. However, we have enough data points that the sample means will be approximately normally distributed, so an unpaired $t$-test could work as well.
-
-2. Perform a formal rank-sum test for the difference in GDP per capita between democracies and non-democracies.
-
-```{r, echo=F}
-dem_gdps = countries$`GDP per capita (US dollars)`[countries$Year == 2010 & !is.na(countries$dem) & countries$dem]
-nondem_gdps = countries$`GDP per capita (US dollars)`[countries$Year == 2010 & !is.na(countries$dem) & !(countries$dem)]
-
-wilcox.test(dem_gdps, nondem_gdps)
-```
-Our hypotheses are $H_0:$ the distributions of 2010 GDP per capita are the same between democracies and non-democracies versus $H_a:$ they are different. We get a test statistic of $W=5443$ and a p-value of $7.75\times 10^{-8}$, so we reject the null and conclude that democracies tend to have higher GDPs per capita.
-
-3. Perform a formal log-transformed $t$-test for the difference in GDP per capita between democracies and non-democracies. Give a 95% confidence interval for the ratio of medians.
-
-```{r, echo=F}
-t.test(log(dem_gdps), log(nondem_gdps))
-```
-
-Let $\mu_0$ be the mean log GDP per capita of non-democracies and $\mu_1$ be the mean log GDP per capita of democracies. We are testing $H_0$: $\mu_0=\mu_1$ vs $H_a:$ the two means are different. We get a $t$-statistic of $-5.85$ with $169.6$ degrees of freedom, which corresponds to a p-value of $2.5\times10^{-8}$. Therefore, we reject the null and conclude that democratic countries have higher average log GDP per capita. To find a 95% confidence interval for the ratio of medians, we can exponentiate the current interval: $(\exp(0.82), \exp(1.66))=(2.27,5.24)$.
-
-4. Suppose we wanted to test whether there was a difference in the mean number of doctors per country between 2019 and 2020. What would be a good way to do so?
-
-We should use a paired $t$-test with pairing by country. We can check whether the mean difference in countries' doctor numbers between 2020 and 2019 is significantly non-zero. The $t$-test shows that the difference is not quite significant, but only 15 countries have data for both 2020 and 2019, so our test might just have not had enough power.
-```{r, echo=F}
-df_2019 <- data.frame(country=countries$Country[countries$Year == 2019],
-           doctors=countries$`Health personnel: Physicians (number)`[countries$Year == 2019])
-
-df_2020 <- data.frame(country=countries$Country[countries$Year == 2020],
-           doctors=countries$`Health personnel: Physicians (number)`[countries$Year == 2020])
-
-joined_df <- full_join(df_2019, df_2020, by=c("country"))
-joined_df <- joined_df[rowSums(is.na(joined_df)) == 0,]
-colnames(joined_df) <- c("Country", "2019 doctors", "2020 doctors")
-
-t.test(joined_df$`2020 doctors` - joined_df$`2019 doctors`)
-```
-
-5. Perform a formal analysis of variance for the difference in 2010 log GDP per capita by world region.
-
-```{r, echo=F}
-countries_2010 <- countries[countries$Year == 2010,]
-
-summary(aov(`GDP per capita (US dollars)`~Region, countries_2010))
-```
-Let $\mu_k$ be the mean GDP per capita of countries in region $k$ (indexed arbitrarily). We want to test $H_0$: $\mu_0=\mu_1=...=\mu_k$ vs $H_a$: the means are not all equal. We get an $F$-statistic of 12.84 for 21 and 187 degrees of freedom for a p-value of less than $2\times 10^{-16}$, suggesting that the mean GDPs per capita of different regions are not equal.
-
-6. Comment on the assumptions of the test.
-
-```{r, echo=F, warning=F}
-ggplot(countries_2010, aes(x=Region, y=log10(`GDP per capita (US dollars)`))) + 
-  geom_boxplot() + 
-  theme_bw() + 
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-tmp <- by(log(countries_2010$`GDP per capita (US dollars)`), countries_2010$Region, var, na.rm=T)
-df <- data.frame(regions=names(tmp), variances=round(as.vector(tmp), 2),
-                 counts=as.vector(table(countries_2010$Region[!is.na(countries_2010$`GDP per capita (US dollars)`)])))
-colnames(df) <- c("Region", "Variance", "Number")
-df
-```
-
-The GDPs are about symmetric, so normality is a reasonable assumption. The variances are quite different though (from 0.15 to 2.95; well beyond a 2x difference), so the equal variance assumption is violated. Independence probably does not hold either because the countries likely trade with each other, causing their GDPs to be correlated both within and between groups.
-
 
 
 

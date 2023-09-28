@@ -3,3 +3,4 @@
 *.log
 *_cache/*
 *_files*
+*.zip

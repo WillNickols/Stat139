@@ -69,7 +69,7 @@ ggplot(tmp_countries, aes(x=`GDP per capita (US dollars)`, fill=dem)) +
   labs(fill="Democracy")
 ```
 
-An unpaired $t$-test, a rank-sum test, a log-transformed $t$-test, or a permutation test would all be reasonable. The rank-sum test, log-transformed $t$-test, and permutation test would account for the fact that the data is not Normally distributed. However, we have enough data points that the sample means will be approximately normally distributed, so an unpaired $t$-test could work as well.
+\vspace{2 cm}
 
 2. Perform a formal rank-sum test for the difference in GDP per capita between democracies and non-democracies.
 
@@ -79,7 +79,8 @@ nondem_gdps = countries$`GDP per capita (US dollars)`[countries$Year == 2010 & !
 
 wilcox.test(dem_gdps, nondem_gdps)
 ```
-Our hypotheses are $H_0:$ the distributions of 2010 GDP per capita are the same between democracies and non-democracies versus $H_a:$ they are different. We get a test statistic of $W=5443$ and a p-value of $7.75\times 10^{-8}$, so we reject the null and conclude that democracies tend to have higher GDPs per capita.
+
+\vspace{2 cm}
 
 3. Perform a formal log-transformed $t$-test for the difference in GDP per capita between democracies and non-democracies. Give a 95% confidence interval for the ratio of medians.
 
@@ -87,7 +88,7 @@ Our hypotheses are $H_0:$ the distributions of 2010 GDP per capita are the same 
 t.test(log(dem_gdps), log(nondem_gdps))
 ```
 
-Let $\mu_0$ be the mean log GDP per capita of non-democracies and $\mu_1$ be the mean log GDP per capita of democracies. We are testing $H_0$: $\mu_0=\mu_1$ vs $H_a:$ the two means are different. We get a $t$-statistic of $-5.85$ with $169.6$ degrees of freedom, which corresponds to a p-value of $2.5\times10^{-8}$. Therefore, we reject the null and conclude that democratic countries have higher average log GDP per capita. To find a 95% confidence interval for the ratio of medians, we can exponentiate the current interval: $(\exp(0.82), \exp(1.66))=(2.27,5.24)$.
+\vspace{2 cm}
 
 \newpage
 
@@ -97,19 +98,11 @@ Let $X\sim\textrm{Bin}(n,p)$ and $Y\sim\textrm{Bin}(m,p)$. Let $X+Y=r$.
 
 1. Find the variance of $X|r$ by using the variance of a known distribution (See 3.9.2 in the Stat 110 book for a hint).
 
-$X|r\sim \textrm{HGeom}(n,m,r)$, so by the variance of the hypergeometric we have:
-$$\textrm{Var}(X|r)=\frac{n+m-r}{n+m-1}\cdot\frac{nr}{n+m}\cdot\frac{m}{n+m}$$
+\vspace{3 cm}
 
 2. Find the variance of $X|r$ by using the fact that $\textrm{Var}(X+Y|r)=0$ and treating $X$ and $Y$ as the sum of Bernoulli random variables. Verify that the two answers are the same. (Hint: Once you get to the Bernoulli random variables, think about how knowing the sum is $r$ makes $p$ irrelevant.)
 
-First, note that the variance of a constant is 0, so $\textrm{Var}(X+Y|r)=0$. Each of $X$ and $Y$ can be decomposed into Bernoullis, and each of these have the same variance and covariance by symmetry. Therefore, $$0=\textrm{Var}(X+Y|r)=(n+m)\textrm{Var}(I_1|r)+2{n+m\choose 2}\textrm{Cov}(I_1,I_2|r)$$ Then, we can solve for the covariance: $\textrm{Cov}(I_1,I_2|r)=-\textrm{Var}(I_1|r)/(n+m-1)$. Conditioning on $r$, $P(I_1=1|r)=\frac{r}{n+m}$, so $$\textrm{Var}(I_1|r)=\frac{r}{n+m}\cdot\frac{n+m-r}{n+m}$$ and $$\textrm{Cov}(I_1,I_2|r)=-\frac{r}{n+m}\cdot\frac{n+m-r}{(n+m)(n+m-1)}$$
-Then, building up $X$ again, 
-$$\begin{aligned}
-\textrm{Var}(X|r)&=\textrm{Var}(\sum_{i=1}^nI_i)\\
-&=n\cdot\frac{r}{n+m}\cdot\frac{n+m-r}{n+m}-2{n\choose 2}\frac{r}{n+m}\cdot\frac{n+m-r}{(n+m-1)(n+m)}\\
-&=\frac{nr(n+m-r)}{(n+m)^2}\left[1-\frac{n-1}{n+m-1}\right]\\
-&=\frac{nmr(n+m-r)}{(n+m)^2(n+m-1)}
-\end{aligned}$$
+\vspace{10 cm}
 
 \newpage
 
@@ -119,7 +112,7 @@ Let $X_1,\dots X_{n_1}\sim \textrm{Exp}(1/\mu_1)$ and $Y_1,\dots Y_{n_2}\sim \te
 
 1. Name three tests we've learned so far that would not be applicable for comparing the $X$s and $Y$s.
 
-ANOVA (only two groups), paired $t$-test (different number of observations in each group), proportion test (not proportions)
+\vspace{2 cm}
 
 2. We'll be comparing the Type I and II error for the following tests: a two sample $t$ test, a log-transformed $t$-test, a rank-based test, and a permutation test. We'll consider two scenarios:
 - First, $n_1=5$, $n_2=15$ with $\mu_1=\mu_2=5$ when calculating the Type I error rate and $\mu_1=5$ and $\mu_2=3$ when calculating the Type II error rate.
@@ -127,7 +120,7 @@ ANOVA (only two groups), paired $t$-test (different number of observations in ea
 
 Why should we use $\mu_1=\mu_2$ when calculating the Type I error rate but $\mu_1\neq\mu_2$ when calculating the Type II error rate?
 
-A type I error is when we reject the null but we should have retained it. We should retain the null when $\mu_1$ and $\mu_2$ are indeed equal. A type II error is when we fail to reject the null when we should have rejected it. Therefore, the means must be different to make this error.
+\vspace{2 cm}
 
 3. Compare the results. What has the highest power? Which maintain their nominal false positive rates? Which test is best in which situations?
 
@@ -186,24 +179,11 @@ out_df <- data.frame("Test (Second scenario)" = c("t test", "log t test", "Rank 
 knitr::kable(out_df)
 ```
 
-In the first scenario where we have a very small sample size, the $t$-test is slightly above its nominal Type I error rate (0.05), and its type II error is the highest in the group (which means it has the lowest power). However, its assumptions are severely violated by using a very right-skewed distribution with only 5 data points. The other tests are closer to their nominal Type I error rates (0.05) with the permutation test having the highest power.
-
-In the second scenario where we have reasonable sample sizes, all the tests have about the same Type I error rate (near 0.05), but the $t$ test has the highest power. The takeaway is that even with skewed distributions, as long as the sample size is at least moderate, the $t$ test will have the highest power while maintaining its nominal Type I error rate.
+\vspace{5 cm}
 
 4. What assumptions do we need for each test and what hypotheses are we testing?
 
-- $t$-test
-  - Assumptions: independence within and between groups and normality (or a large sample size)
-  - Hypotheses: $H_0:$ Means are equal; $H_a$: Means are not equal.
-- Log-transformed $t$-test
-  - Assumptions: independence, symmetry once transformed, and normality once transformed (or a large sample size)
-  - Hypotheses: $H_0:$ Ratio of medians is 1; $H_a:$ Ratio of medians isn't 1.
-- Rank-based test
-  - Assumptions: independence; $n_1,n_2\geq10$
-  - Hypotheses: $H_0:$ The two distributions are the same, $H_a$: The two distributions are different.
-- Permutation test
-  - Assumptions: independence
-  - Hypotheses: $H_0:$ The distribution of outcomes is not related to group status. $H_a:$ It is related.
+\vspace{8 cm}
   
 5. The following simulation uses the same set-ups as above to calculate a $t$-based confidence interval for the difference in means, a $t$-based confidence interval for the ratio of medians, a percentile bootstrap interval for the difference in means, and a reversed percentile bootstrap interval for the difference in means. Shown below are the coverage probability and interval width for each. Comment on the results.
 
@@ -295,27 +275,15 @@ out_df2 <- data.frame("Interval (Second scenario)" = c("t interval", "Transforme
 knitr::kable(out_df2)
 ```
 
-When one of the samples is very small and there's a difference, all of the intervals except the interval for the ratio of medians show coverage probabilities quite a bit below their nominal levels. Interestingly, the percentile methods are even worse than the t interval. When the means are the same, all the methods perform a bit better. The interval widths correlate with the coverage probability: smaller intervals have lower coverage probabilities. 
-
-When the samples are larger, the coverage probabilities are closer to their nominal levels, but the percentile methods still give intervals that are too narrow and therefore have slightly lower coverage probabilities. Note that in both scenarios the transformed $t$ interval is trying to capture something different than the other intervals, explaining its smaller width.
+\vspace{5 cm}
 
 6. Based on the results above, which is the best confidence interval to use?
 
-The $t$ or transformed $t$ have coverage probabilities closest to the nominal confidence level, so we should use those. Shorter intervals would be nice if the intervals maintained the same coverage probabilities, but otherwise they're just not calibrated and therefore not useful.
+\vspace{3 cm}
 
 7. Imagine now that we wanted to construct a confidence interval for $\mu_1$ by using a studentized bootstrap interval.  If we knew the data were distributed exponentially, what's one small change we could make to the confidence interval for $\mu_1$ so that the interval is equally as wide or narrower while keeping the same confidence level?
 
-Make the lower bound 0 if it's ever negative in the studentized bootstrap interval.
-
-\newpage
-
-
-
-
-
-
-
-
+\vspace{2 cm}
 
 
 

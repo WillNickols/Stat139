@@ -107,7 +107,7 @@ countries_2010 <- countries[countries$Year == 2010,]
 
 summary(aov(`GDP per capita (US dollars)`~Region, countries_2010))
 ```
-Let $\mu_k$ be the mean GDP per capita of countries in region $k$ (indexed arbitrarily). We want to test $H_0$: $\mu_0=\mu_1=...=\mu_{22}$ vs $H_a$: the means are not all equal. We get an $F$-statistic of 12.84 for 21 and 187 degrees of freedom for a p-value of less than $2\times 10^{-16}$, suggesting that the mean GDPs per capita of different regions are not equal.
+Let $\mu_k$ be the mean GDP per capita of countries in region $k$ (indexed arbitrarily). We want to test $H_0$: $\mu_1=...=\mu_{22}$ vs $H_a$: the means are not all equal. We get an $F$-statistic of 12.84 for 21 and 187 degrees of freedom for a p-value of less than $2\times 10^{-16}$, suggesting that the mean GDPs per capita of different regions are not equal.
 
 5. Comment on the assumptions of the test.
 

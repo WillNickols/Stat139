@@ -148,12 +148,12 @@ These problems will deal with a dataset of country-level statistics from [UNdata
 countries <- read.csv("data/country_stats.csv", check.names = F)
 ```
 
-1. Suppose we want to know the relationship between log 2010 GDP per capita and the 2010 life expectancy for females at birth. Interpret the following output.
+1. Suppose we want to know the relationship between log 2010 GDP per capita and the 2010 life expectancy for females at birth. Formally test the association using the following output:
 ```{r, echo=F}
 countries_2010 <- countries[countries$Year == 2010,]
 summary(lm(`Life expectancy at birth for females (years)` ~ log2(`GDP per capita (US dollars)`), countries_2010))
 ```
-This shows that a change in log2 GDP per capita of 1 (a doubling of GDP per capita) corresponds to an extra 3.35 years of life expected at birth.
+We are interested in testing $H_0:\beta_1=0$ vs $H_a:\beta_1\neq0$ where $\beta_1$ is the slope relating log2 GDP per capita to female life expectancy. We get a $t$-statistic of $19.11$ and a p-value less than $2\times 10^{-16}$ which indicates that there is a significant relationship between log GDP per capita and female life expectancy. In particular, a change in log2 GDP per capita of 1 (a doubling of GDP per capita) corresponds to an extra 3.35 years of life expected at birth.
 
 2. Suppose we read this result in a paper but what we actually cared about was the regression of log2 GDP per capita on female life expectancy at birth. What can we conclude about this alternative regression?
 

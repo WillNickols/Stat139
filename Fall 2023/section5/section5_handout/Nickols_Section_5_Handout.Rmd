@@ -70,7 +70,7 @@ lm1 <- lm(log2(`Emissions per capita (metric tons of carbon dioxide)`) ~ log2(`S
 summary(lm1)$coefficients
 ```
 
-Holding the number of tourists constant, a doubling in energy supply per capita (a 1 point change on the log2 scale) is associated with a $2^{1.116}=2.17\times$ increase in emissions. Holding the energy supply constant, a doubling in tourist arrivals is associated with a $1.07\times$ increase in emissions.
+\vspace{3 cm}
 
 2. Check the assumptions of the model.
 
@@ -79,10 +79,7 @@ par(mfrow=c(2,2))
 plot(lm1)
 ```
 
-- Linearity: The Residuals vs Fitted plot shows that there is no clear pattern to the residuals, so linearity is likely upheld.
-- Constant variance: Based on the Scale-Location plot, the residuals are about equal over the fitted values.
-- Normality: The Q-Q plot show that the lower tail is larger than expected. The emissions are possibly left skewed because a few countries had already started cutting emissions at this point.
-- Independence: This might not be true: countries that had entered into emissions cutting deals by 2010 probably influenced each others' emissions.
+\vspace{8 cm}
 
 3. Uganda has tourism and energy usage data but no emissions data. The following are a 90\% confidence interval and a 90\% prediction interval for Uganda's log emissions from this data. Identify which is which, and interpret them.
 
@@ -93,17 +90,11 @@ round(predict(lm1, newdata=countries_2010[countries_2010$Country=="Uganda",],
         interval = c("prediction"), level = 0.90), 3)
 ```
 
-The first is the confidence interval because it is narrower; it can be interpreted as an interval for the mean log emissions of countries with energy usage and tourism like Uganda. The second is the prediction interval because it is wider; it can be interpreted as an interval for Uganda's log emissions (or a country with the same energy usage and tourism as Uganda). 
+\vspace{3 cm}
 
 4. What we actually care about is Uganda's emissions, not its log emissions. We can exponentiate one of the intervals above to get a valid interval on the original scale, but exponentiating the other would not be valid. Which is which and why?
 
-We cannot exponentiate the confidence interval because that would violate Jensen's inequality:
-$$0.95=P(A\leq E(\log(Y)|X=x)\leq B)=P(e^A\leq \exp(E(\log(Y)|X=x))\leq e^B)\neq P(e^A\leq E(Y|X=x)\leq e^B)$$
-
-However, we can exponentiate the prediction interval:
-$$0.95=P(A\leq \log(Y)\leq B|X=x)=P(e^A\leq Y\leq e^B|X=x)$$
-
-This exponentiated prediction interval is $0.26$ to $1.63$ metric tons of carbon dioxide per person in Uganda. For reference, the United States' 2010 emissions per capita were 17.3 metric tons of carbon dioxide per person.
+\vspace{5 cm}
 
 \newpage
 
@@ -114,7 +105,7 @@ We usually estimate the variance-covariance matrix with $\hat{\sigma}^2(\mathbf{
 
 1. Let $\mathbf{\Sigma}=\sigma^2(\mathbf{X}^T\mathbf{X})^{-1}$. How can we create a correlation matrix from this? You should index into $\mathbf{\Sigma}$ in your answer.
 
-Copy $\mathbf{\Sigma}$ into a new matrix $\mathbf{\Sigma}'$. Then, for each $i$ in $1,...,p+1$, divide the $i^{th}$ row in $\mathbf{\Sigma}'$ by $\sqrt{\mathbf{\Sigma}_{i,i}}$. Now, divide the $i^{th}$ column in $\mathbf{\Sigma}'$ by $\sqrt{\mathbf{\Sigma}_{i,i}}$. This is now the correlation matrix since the entry corresponding to $\textrm{Cov}(\hat{\beta}_i, \hat{\beta}_j)$ is divided by $\sqrt{\textrm{Var}(\hat{\beta}_i)\textrm{Var}(\hat{\beta}_j)}$.
+\vspace{5 cm}
 
 2. Three models were fit to predict emissions per capita:
 - Only energy supply per capita
@@ -151,7 +142,8 @@ lm3_vcov <- vcov(lm3)
 cormat <- t(t(lm3_vcov/sqrt(diag(lm3_vcov))) / sqrt(diag(lm3_vcov)))
 round(cormat, 3)
 ```
-On their own, energy supply per capita and tourist/visitor arrivals are both positively associated with emissions, which makes sense. In the last model, the coefficients for these two variables are quite negatively correlated, meaning that as one increases the other tends to decrease. This explains why both coefficients are slightly less than in their separate models, and the tourist/visitor arrivals coefficient is shrunk more because the energy supply per capita is much more strongly associated with emissions.
+
+\vspace{3 cm}
 
 3. Consider the following simulation. We will generate data from the model $Y_i=\beta_1X_{i,1}+\beta_2X_{i,2}+\epsilon_i$ with $\epsilon_i\sim\mathcal{N}(0, \sigma^2)$. (We'll have $\beta_1=\beta_2$, but, of course, the linear model doesn't know this.)
 
@@ -235,7 +227,7 @@ grid.arrange(plot1, plot2, ncol=2, widths=c(1,1.3))
 
 Explain the p-value trends in the missing-predictor models. Reference the equation for the variance-covariance matrix as necessary.
 
-In the first simulation, when the predictors are correlated but one is missing, some of the predictive ability of $\vv{X_2}$ is absorbed by $\vv{X_1}$, causing it to be more significant than when $\vv{X_2}$ is also included. In the second simulation, missing $\vv{X_2}$ results in a large amount of unexplained variation, driving up $\hat{\sigma}^2$ in the variance-covariance matrix and therefore increasing the apparent variance of $\hat{\beta}_1$, making it less significant.
+\vspace{3 cm}
 
 4. Consider the design matrix $$\mathbf{X} = \begin{bmatrix}
     1 & 1\\
@@ -245,32 +237,15 @@ In the first simulation, when the predictors are correlated but one is missing, 
   
   What do the rows represent? What do the columns represent? Why should the first column be all $1$s?
   
-The rows are individual data observations. The columns are predictors. The first column is all $1$s because every observation uses the same intercept.
+\vspace{5 cm}
 
 5. Find the variance of $\hat{\beta}_1$ as a function of $a$ and $\sigma^2$.
 
-$$\begin{aligned}\mathbf{X}^T\mathbf{X}=\begin{bmatrix}
-    3 & 2+a\\
-    2+a  & a^2+2\\
-  \end{bmatrix}\implies (\mathbf{X}^T\mathbf{X})^{-1}&=\frac{1}{3a^2+6-(4+4a+a^2)}\begin{bmatrix}
-    a^2+2 & -2-a\\
-    -2-a  & 3\\
-  \end{bmatrix}\\
-  &=\frac{1}{2a^2-4a+2}\begin{bmatrix}
-    a^2+2 & -2-a\\
-    -2-a  & 3\\
-  \end{bmatrix}\\
-  &=\frac{1}{2(a-1)^2}\begin{bmatrix}
-    a^2+2 & -2-a\\
-    -2-a  & 3\\
-  \end{bmatrix}\\
-  \end{aligned}$$
-  
-We can obtain the variance of $\hat{\beta}_1$ by extracting the bottom right entry and multiplying by $\sigma^2$ to get $$\textrm{Var}(\hat{\beta}_1)=\frac{3\sigma^2}{2(1-a)^2}$$
+\vspace{8 cm}
 
 6. What does this say about how the variance of $\hat{\beta}_1$ changes with $a$? Why does this make sense?
 
-The variance is highest when $a=1$ but decreases as $a$ is further from $1$. This makes sense because values of $a$ that are close to 1 don't give much information relative to the points we already have.
+\vspace{2 cm}
 
 \newpage
 
@@ -281,8 +256,7 @@ $$T=\frac{\vv{C}^T\vv{\hat{\beta}}-\gamma_0}{\hat{\sigma}\sqrt{\vv{C}^T(X^TX)^{-
 
 1. Name two situations in which we would take $\gamma_0$ to be 0. What would the contrast vectors be in these cases?
 
-- We could take $\gamma_0$ to be 0 if we wanted to see whether a single predictor had any effect. In this case, the contrast vector would be $0$s except for a single $1$ at the index of the predictor we care about.
-- We could also take $\gamma_0$ to be 0 if we wanted to see whether the difference in the predicted outputs from two sets of predictors was significant. In this case, the contrast vector would be the first set of predictors minus the second.
+\vspace{4 cm}
 
 2. Perform a formal contrast test based on the energy supply per capita plus tourists/visitors model to determine whether the mean emissions for countries like Seychelles is significantly different from the mean emissions for countries like Madagascar (two East African island countries).
 
@@ -309,30 +283,11 @@ contrast.test(lm3, c("(Intercept)" = 1, log2(unlist(countries_2010[countries_201
               c("(Intercept)" = 1, log2(unlist(countries_2010[countries_2010$Country == "Madagascar", 
                                                     c("Energy supply", "Tourists")]))))
 ```
-To determine whether emissions in countries like Seychelles are higher than in countries like Madagascar, we want to test $H_0: (6.066-3.170)\beta_1 + (7.451 - 7.615)\beta_2=0$ vs. $H_a: (6.066-3.170)\beta_1 + (7.451 - 7.615)\beta_2\neq0$. The resulting $t$-statistic is 20.9 based on 128 degrees of freedom, resulting in a p-value of $4.9\times10^{-43}$, so we reject the null and conclude that countries like Seychelles are very likely to have higher average emissions than countries like Madagascar.
+\vspace{4 cm}
 
 3. Name two cases in which a contrast test should give the same result as another test.
 
-- When two contrast vectors differ by 1 in a single predictor, we expect to see the same result as when running a $t$-test on that predictor itself.
-
-- When the model contains only a single categorical predictor, a test between a vector with the intercept and category as 1s versus a vector with only the intercept as 1 should be the same as running a pooled $t$-test.
-
-```{r, echo=F, include=F}
-# Make sure single predictor case collapses to t-test
-contrast.test(lm3, c("(Intercept)" = 0, "Energy supply" = 1, "Tourists" = 0),
-              c("(Intercept)" = 0, "Energy supply" = 0, "Tourists" = 0))
-summary(lm3)$coefficients
-
-# Make sure categorical predictor collapses to paired t-test
-countries_2010$is_africa <- grepl("Africa", countries_2010$Region)
-
-lm4 <- lm(log2(`Emissions`) ~ is_africa, 
-          countries_2010[countries_2010$`Emissions` > 0,])
-
-contrast.test(lm4, c("(Intercept)" = 1, "is_africaTRUE" = 1),
-              c("(Intercept)" = 1, "is_africaTRUE" = 0))
-t.test(log2(`Emissions`) ~ is_africa, countries_2010[countries_2010$`Emissions` > 0,], var.equal=T)
-```
+\vspace{4 cm}
 
 \newpage
 
@@ -343,16 +298,12 @@ $$\frac{1}{\sigma}(\mathbf{X}^T\mathbf{X})^{1/2}(\vv{\hat{\beta}}-\vv{\beta})\xr
 
 1. Suppose we have a consistent estimator for $\sigma$ (we have some $\hat{\sigma}$ such that $\hat{\sigma}\xrightarrow{p}\sigma$). In the original multivariate Normal convergence statement, we don't know $\sigma^2$, but we still want to say something about convergence. How can we use the consistent estimator instead?
 
-We can simply replace $\sigma$ with $\hat{\sigma}$. By the continuous mapping theorem, $\frac{\sigma}{\hat{\sigma}}\xrightarrow{p}\frac{\sigma}{\sigma}=1$, so by Slutsky's theorem 
-$$\frac{1}{\hat{\sigma}}(\mathbf{X}^T\mathbf{X})^{1/2}(\vv{\hat{\beta}}-\vv{\beta})=\frac{\sigma}{\hat{\sigma}}\frac{1}{\sigma}(\mathbf{X}^T\mathbf{X})^{1/2}(\vv{\hat{\beta}}-\vv{\beta})\xrightarrow{d}\textrm{MVN}(\vv{0},\mathbf{I_{p+1}})$$
+\vspace{4 cm}
 
 2. Find the approximate distribution of $\vv{\hat{\beta}}$ for large $n$.
 
-By rearranging the equation above, we get 
-$$\vv{\hat{\beta}}\dot{\sim}\textrm{MVN}(\vv{\beta},\hat{\sigma}^2(\mathbf{X}^T\mathbf{X})^{-1})$$
-which is the same as the exact distribution (with $\sigma^2$ instead) when the $\epsilon_i$ are Normal.
+\vspace{4 cm}
 
 3. This result indicates that one of the linear model assumptions does not matter much with large $n$. Which assumption is this?
 
-The Normality assumption does not matter much with large $n$.
-
+\vspace{2 cm}

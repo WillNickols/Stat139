@@ -78,24 +78,24 @@ D) 0.082
 
 (c) A company is testing a new drug intended to reduce plaques of a misfolded protein in a rare disease.  The company's biostatistics team has determined that for a preliminary study where all participants will be given the drug, they need a sample size $n$ to achieve a Type 1 error rate of 0.05 and a Type 2 error rate of 0.2 for a $t$-test of $H_0:$ the drug has 0 effect on reducing plaques vs $H_a:$ the drug has some effect on reducing plaques.  However, when it comes time to enroll participants in the trial, the doctors can only find one large family where $n$ people are affected by the disease.  If the trial consists of just the $n$ people from this family, provide plausible estimates of the Type 1 and Type 2 error rates and a brief explanation of why they will or will not change.
 
-\textcolor{blue}{Type 1: 0.1, Type 2: 0.1. (Anything with Type 1 error above 0.05 and Type 2 error below 0.2 works.)  The family members are likely to be more similar to one another than to a random person with the disease, so their ourcomes will likely be correlated.  As we saw in Pset 1, when there is correlation in a sample, a $t$-test based on that sample is likely to overstate the true effect because we will underestimate the variance of the $t$-statistic.  Therefore, we will be more likely to reject the null whether it is true or not, increasing our Type 1 error rate but decreasing our Type 2 error rate.}
+\textcolor{blue}{Type 1: 0.1, Type 2: 0.1. (Anything with Type 1 error above 0.05 and Type 2 error below 0.2 works.)  The family members are likely to be more similar to one another than to a random person with the disease, so their outcomes will likely be correlated.  As we saw in Pset 1, when there is correlation in a sample, a $t$-test based on that sample is likely to overstate the true effect because we will underestimate the variance of the $t$-statistic.  Therefore, we will be more likely to reject the null whether it is true or not, increasing our Type 1 error rate but decreasing our Type 2 error rate.}
 
 ```{r, cache=T}
 library(MASS)
 nsims <- 10000
-uncorrolated <- vector(length = nsims)
+uncorrelated <- vector(length = nsims)
 for (i in 1:nsims) {
-  uncorrolated[i] <- t.test(rnorm(15, 0.1, 1))$p.value
+  uncorrelated[i] <- t.test(rnorm(15, 0.1, 1))$p.value
 }
-corrolated <- vector(length = nsims)
+correlated <- vector(length = nsims)
 Sigma <- matrix(0.5, 15, 15)
 diag(Sigma) <- 1
 for (i in 1:nsims) {
-  corrolated[i] <- t.test(mvrnorm(1, rep(0.1, 15), Sigma))$p.value
+  correlated[i] <- t.test(mvrnorm(1, rep(0.1, 15), Sigma))$p.value
 }
 
-mean(uncorrolated < 0.05)
-mean(corrolated < 0.05)
+mean(uncorrelated < 0.05)
+mean(correlated < 0.05)
 ```
 
 (d) Lotsa Cash is comparing incomes between Massachusetts and New Hampshire and decides to use a $\log_2$ transformation on the data because of its right skew.  Lotsa obtains a confidence interval of (0.23, 0.66) for the difference in means (Massachusetts - New Hampshire) on the log scale.  What should she conclude on the original scale?  What assumption is required for this conclusion?
@@ -255,15 +255,15 @@ c("t-test" = t.test(y~as.factor(x), alternative="two.sided")$p.value,
                 lm_sum$fstatistic[3],lower.tail=FALSE),
   "contrast" = contrast.test(fit_lm, c(0, 1), c(0, 0))[2])
 ```
-\textcolor{blue}{The degrees of freedom in the unpooled $t$-test will be $n-1$ or with Satterthwaite: $$\frac{\left(\frac{s_1^2}{n_1}+\frac{s_2^2}{n_2}\right)^2}{\frac{1}{n_1-1}\left(\frac{s_1^2}{n_1}\right)^2+\frac{1}{n_2-1}\left(\frac{s_2^2}{n_2}\right)^2}=\frac{\left(\frac{s_1^2+s_2^2}{n}\right)^2}{\left(\frac{s_1^4+s_2^4}{n^2(n-1)}\right)^2}=(n-1)\frac{s_1^4+2s_1^2s_2^2+s_2^4}{s_1^4+s_2^4}=(n-1)\left(1+\frac{2s_1^2s_2^2}{s_1^4+s_2^4}\right)\leq2(n-1)$$ with equality only when the variances are the same.  However, because the problem description required the variances of each group to be different, the degrees of freedom do not equal $2n-2$.  Since the other tests use a $t_{n-2}$ null distribution, the unpooled $t$-test will give a different result.  Some algebra can show that the test statistic $T$ equals the test statistic for the slope from the linear regression as long as there are equal numbers of observations from both groups.  (This is also shown in the example code, or you can just use the fact that the other three statistics are equal and use the same distribution to conclude that the degrees of freedom difference doesn't balance out some test statistic difference.)  Note that if we had used a pooled $t$-test, all the p-values would have been the same.}
+\textcolor{blue}{The degrees of freedom in the unpooled $t$-test will be $n-1$ or with Satterthwaite: $$\frac{\left(\frac{s_1^2}{n_1}+\frac{s_2^2}{n_2}\right)^2}{\frac{1}{n_1-1}\left(\frac{s_1^2}{n_1}\right)^2+\frac{1}{n_2-1}\left(\frac{s_2^2}{n_2}\right)^2}=\frac{\left(\frac{s_1^2+s_2^2}{n}\right)^2}{\left(\frac{s_1^4+s_2^4}{n^2(n/2-1)}\right)}=(n/2-1)\frac{s_1^4+2s_1^2s_2^2+s_2^4}{s_1^4+s_2^4}=(n/2-1)\left(1+\frac{2s_1^2s_2^2}{s_1^4+s_2^4}\right)\leq n-2$$ with equality only when the variances are the same. However, because the problem description required the variances of each group to be different, the degrees of freedom do not equal $n-2$. Since the other tests use a $t_{n-2}$ null distribution, the unpooled $t$-test will give a different result. Note that if we had used a pooled $t$-test, all the p-values would have been the same.}
 
-\textcolor{blue}{The $f$-test uses the statistic: $$F=\frac{\frac{\textrm{SSM}}{\textrm{df}_M}}{\frac{\textrm{SSE}}{\textrm{df}_E}}=\frac{\frac{\sum_{i=1}^n(\hat{Y_i}-\bar{Y})^2}{1}}{\hat{\sigma}^2}=\frac{\sum_{i=1}^n(\hat{\beta_1}(X_i-\bar{X}))^2}{\hat{\sigma}^2}=\left(\frac{\hat{\beta_1}}{\sqrt{\hat{\sigma}^2/\textrm{SSX}}}\right)^2$$ with $1$ and $n-2$ degrees of freedom.  If $T\sim t_{n-2}$, $T^2\sim F_{1, n-2}$, so $P(-|t_{\textrm{obs}}|\leq T\leq |t_{\textrm{obs}}|)=P(T^2\leq t_{\textrm{obs}}^2)=P(F\leq t_{\textrm{obs}}^2)$.  Also, as seen above, $f_{\textrm{obs}}=t_{\textrm{obs}}^2$.  Therefore, the p-value is the same as in a $t$ test for slope.}
+\textcolor{blue}{The $f$-test uses the statistic: $$F=\frac{\frac{\textrm{SSM}}{\textrm{df}_M}}{\frac{\textrm{SSE}}{\textrm{df}_E}}=\frac{\frac{\sum_{i=1}^n(\hat{Y_i}-\bar{Y})^2}{1}}{\hat{\sigma}^2}=\frac{\sum_{i=1}^n(\hat{\beta_1}(X_i-\bar{X}))^2}{\hat{\sigma}^2}=\left(\frac{\hat{\beta_1}}{\sqrt{\hat{\sigma}^2/\textrm{SSX}}}\right)^2$$ with $1$ and $n-2$ degrees of freedom. If $T\sim t_{n-2}$, $T^2\sim F_{1, n-2}$, so $P(-|t_{\textrm{obs}}|\leq T\leq |t_{\textrm{obs}}|)=P(T^2\leq t_{\textrm{obs}}^2)=P(F\leq t_{\textrm{obs}}^2)$. Also, as seen above, $f_{\textrm{obs}}=t_{\textrm{obs}}^2$. Therefore, the p-value is the same as in a $t$ test for slope.}
 
 \textcolor{blue}{The $t$-test from the linear model uses the sampling distribution of $\hat{\beta_1}$ for its $t$-statistic: $$\frac{\hat{\beta_1}}{\hat{\sigma}\sqrt{1/\textrm{SSX}}}$$}
 
 \textcolor{blue}{The contrast test uses the statistic $$T=\frac{\vec{C}^T\hat{\vec{\beta}}}{\hat{\sigma}\sqrt{C^T(X^TX)^{-1}C}}=\frac{\hat{\beta_1}}{\hat{\sigma}\sqrt{1/\textrm{SSX}}}$$ ($C^T(X^TX)^{-1}C=\frac{1}{\textrm{SSX}}$ can be seen from Pset 4.)}
 
-\textcolor{blue}{An easier way to find which p-value is different is to note that all four tests are testing the same null hypothesis of $\hat{\beta_1}=0$, and three are based on the linear model and one is based on the $t$-test.  The three tests based on the same linear model that are testing the same hypothesis should give the same p-values or our system is broken.}
+\textcolor{blue}{An easier way to find which p-value is different is to note that all four tests are testing the same null hypothesis of $\hat{\beta_1}=0$, and three are based on the linear model and one is based on the $t$-test. The three tests based on the same linear model that are testing the same hypothesis should give the same p-values or our system is broken.}
 
 (g) In a last ditch effort to draw conclusions from her data, Auda Fidese has decided to test every combination of her five $\beta$ coefficients for significance in contrast tests.  Specifically, she is going to test all $\vec{C}^T$ of the form $[0\enspace I_1 \enspace I_2 \enspace I_3 \enspace I_4 \enspace I_5]$ where $I_j$ is an indicator of $\beta_j$ being in the test.  Assume the overall model $F$-test null is true and she is rejecting tests where the p-value is below $\alpha$.  
 

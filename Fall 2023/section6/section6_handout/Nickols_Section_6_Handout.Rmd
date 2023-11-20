@@ -53,26 +53,19 @@ Transformations and polynomials are useful, but they often create additional cor
 
 1. Explain why $$(g(X_1)-g(X_2))(h(X_1)-h(X_2))>0$$
 
-If $X_1>X_2$, $g(X_1)>g(X_2)$ and $h(X_1)>h(X_2)$, so a positive times a positive is positive. If $X_1<X_2$, $g(X_1)<g(X_2)$ and $h(X_1)<h(X_2)$, and a negative times a negative is positive.
+\vspace{3 cm}
 
 2. Take the expectation of both sides and expand to show that $\textrm{Cov}(g(X),h(X))>0$ for a random variable $X$ with the same distribution as $X_1$ and $X_2$.
 
-$$\begin{aligned}
-E((g(X_1)-g(X_2))(h(X_1)-h(X_2)))&=E(g(X_1)h(X_1)-g(X_1)h(X_2)-g(X_2)h(X_1)+g(X_2)h(X_2)))\\
-&=E(g(X_1)h(X_1)+g(X_2)h(X_2))-E(g(X_1))E(h(X_2))-E(g(X_2))E(h(X_1))\\
-&=2E(g(X)h(X))-2E(g(X))E(h(X))\\
-&=2\textrm{Cov}(g(X),h(X))
-\end{aligned}$$
-
-which implies $\textrm{Cov}(g(X),h(X))>0$.
+\vspace{6 cm}
 
 3. Suppose you have some continuous predictor $X$ and two increasing transformations of $X$ you include in the model. What does this say about the transformed predictors?
 
-They will be positively correlated, creating multicollinearity that could strongly affect the slopes relative to a model with only one of the transformations.
+\vspace{3 cm}
 
 4. Suppose you have a strictly positive continuous predictor and you include it as a polynomial. What can you say about the $X, X^2, X^3, ...$ coefficients?
 
-They will all be positively correlated since $g(x)=x^n$ is a strictly increasing function for $x>0$.
+\vspace{3 cm}
 
 \newpage
 
@@ -92,7 +85,7 @@ countries_2010$Region <- as.factor(countries_2010$Region)
 countries_2010$Region <- relevel(countries_2010$Region, ref = "Northern America")
 summary(lm(countries_2010$`GDP per capita (US dollars)`~Region, countries_2010))$coefficients
 ```
-North American countries have an average GDP per capita of \$60429.75. This is significantly more (pairwise) than every other region except Oceania and West Europe. The average GDP per capita in the other regions can be calculated by adding their coefficients to the intercept. For example, the Caribbean has an average GDP per capita of $60429.75+(-42178.39)=18251.36$.
+\vspace{3 cm}
 
 2. The following 2nd order polynomial regression model predicts the percent of arable land in a country from its average annual precipitation. What is the optimal precipitation for having the most arable land?
 
@@ -109,42 +102,11 @@ ggplot(countries, aes(x=`Precipitation (mm)`, y=`Arable land (% of total land ar
   ylim(0, 60) + 
   theme_bw()
 ```
-Setting the derivative of the fit line to 0 gives $$2\hat{\beta_2}x+\hat{\beta}_1=0\implies x=\frac{\hat{\beta_1}}{-2\hat{\beta_2}}=1256.4$$ 
-Therefore, the estimated proportion of arable land increases with increasing precipitation up to 1256.4 mm per year, after which it declines. This makes sense because areas with either very little rainfall or a lot of rainfall are unlikely to have much productive farmland. Interestingly, the annual average precipitation in Cambridge is [1174 mm](https://en.climate-data.org/north-america/united-states-of-america/massachusetts/cambridge-1734/).
+\vspace{4 cm}
 
 3. Use the previous model to find the probability that a country with $x$ mm annual precipitation will have less than $\tau$ percent of its land arable. Recall that $$T=\frac{Y-\vv{X}_0^T\vv{\hat{\beta}}}{\hat{\sigma}\sqrt{1+\vv{X}_0^T(\mathbf{X}^T\mathbf{X})^{-1}\vv{X}_0}}\sim t_{n-(p+1)}$$ where $\vv{X}_0$ is the new vector of predictors, $\mathbf{X}$ is the matrix of previous predictors, and $Y$ is the new outcome assuming it follows it the previous model.
 
-Let $\vv{X}_0^T=[1, x, x^2]$ and $Y$ be the percent of arable land.
-
-$$\begin{aligned}P(Y<\tau)&=P\left(\frac{Y-\vv{X}_0^T\vv{\hat{\beta}}}{\hat{\sigma}\sqrt{1+\vv{X}_0^T(\mathbf{X}^T\mathbf{X})^{-1}\vv{X}_0}}<\frac{\tau-\vv{X}_0^T\vv{\hat{\beta}}}{\hat{\sigma}\sqrt{1+\vv{X}_0^T(\mathbf{X}^T\mathbf{X})^{-1}\vv{X}_0}}\right)\\
-&=P\left(T<\frac{\tau-\vv{X}_0^T\vv{\hat{\beta}}}{\hat{\sigma}\sqrt{1+\vv{X}_0^T(\mathbf{X}^T\mathbf{X})^{-1}\vv{X}_0}}\right)\\
-&=F_{t_{n-(p+1)}}\left(\frac{\tau-\vv{X}_0^T\vv{\hat{\beta}}}{\hat{\sigma}\sqrt{1+\vv{X}_0^T(\mathbf{X}^T\mathbf{X})^{-1}\vv{X}_0}}\right)
-\end{aligned}$$
-
-For example, we can look at the probability a country with 1500 mm precipitation per year on average will have less than 10\% of its land arable.
-
-```{r, cache=T, echo=F}
-threshold = 10
-
-X_0 = c(1, 1500, 1500^2)
-
-# Using the null distribution, we can standardize the threshold and find the density below it
-pt((threshold - X_0 %*% coef(lm1)) / 
-     (sqrt(t(X_0) %*% vcov(lm1) %*% X_0 + summary(lm1)$sigma^2)), 
-   lm1$df.residual)
-```
-
-
-```{r, include=F, cache=TRUE}
-# Check that this works as intended
-prediction <- predict(lm1,newdata = data.frame('Precipitation (mm)'=1500, check.names = F),interval = "prediction")
-threshold = prediction[2:3]
-
-# These should threshold above 0.025 and 0.975 density 
-pt((threshold - as.vector(X_0 %*% coef(lm1))) / 
-     as.vector(sqrt(t(X_0) %*% vcov(lm1) %*% X_0 + summary(lm1)$sigma^2)), 
-   lm1$df.residual)
-```
+\vspace{9 cm}
 
 4. Compare the prediction accuracy of a LOESS model to that of the previous model.
 
@@ -175,7 +137,8 @@ ggplot(countries, aes(x=`Precipitation (mm)`, y=`Arable land (% of total land ar
 
 print(round(c("LM R2" = lm_rsq, "LOESS R2" = loess_rsq), 3))
 ```
-The LOESS model's $R^2$ value is more than double the linear model's $R^2$, so it is explaining much more of the variance.
+
+\vspace{4 cm}
 
 5. Perform a formal hypothesis test to determine whether a fourth degree polynomial fits the data better than a second degree polynomial.
 
@@ -192,7 +155,8 @@ ggplot(countries, aes(x=`Precipitation (mm)`, y=`Arable land (% of total land ar
 lm2 <- lm(`Arable land (% of total land area)`~poly(`Precipitation (mm)`, 4, raw = TRUE), countries_2010)
 anova(lm1, lm2)
 ```
-In an ESS $F$-test of $H_0: \beta_{\textrm{Precipitation}^3}=\beta_{\textrm{Precipitation}^4}=0$ (the fourth degree polynomial is no better) vs $H_a:$ at least one of the coefficients is not 0, we get an $F$-statistic of 13.3 for an $F_{2, 174}$ distribution, yielding a p-value of $4.3\times 10^{-6}$. Therefore, we reject the null and conclude that the fourth degree polynomial is significantly better than the second degree polynomial. (Note that the fourth-degree polynomial looks like the LOESS model that performed much better.)
+
+\vspace{4 cm}
 
 6. Interpret the following model that looks at the proportion of the national parliament that is women as a function of GDP per capita and whether the country is a democracy.
 
@@ -215,7 +179,7 @@ ggplot(countries_2010_with_dem, aes(x=log2(`GDP per capita (US dollars)`), y = `
   ylab("National parliament % women")
 ```
 
-In non-democracies, a doubling in GDP per capita is significantly associated with a 1.3\% decrease in the proportion of the parliament that is women. In democracies, a doubling in GDP per capita is significantly associated with a -1.3+3.2=1.9\% increase in the proportion of parliament that is women.
+\vspace{3 cm}
 
 \newpage
 
@@ -240,14 +204,7 @@ df <- data.frame(Response = round(case_when(category == "1" ~ 3,
 kable(df)
 ```
 
-```{r, cache=T, echo=F}
-lm_sim <- lm(Response ~ Category * Value, df)
-model_matrix_out = model.matrix(lm_sim)
-attr(model_matrix_out, "assign") <- NULL
-attr(model_matrix_out, "contrasts") <- NULL
-
-print(model_matrix_out)
-```
+\vspace{8 cm}
 
 2. For each of the pairs of plots below, determine what model should be fit to best describe the data (e.g., `response ~ x^2 + category`).
 
@@ -294,7 +251,7 @@ grid.arrange(plot1, plot2, ncol = 2, widths=c(0.8,1))
 # summary(lm(response ~ x + category, df))$coefficients
 ```
 
-Because each group appears to have a similar slope but distinct intercept, we should use `response ~ x + category`.
+\vspace{2 cm}
 
 ```{r, echo=F, cache=T, warning=F, fig.height=3.5}
 n <- 1000
@@ -335,11 +292,11 @@ grid.arrange(plot1, plot2, ncol = 2, widths=c(0.8,1))
 # summary(lm(response ~ x * category, df))$coefficients
 ```
 
-Because each group appears to have a different slope, we should use `response ~ x * category`.
+\vspace{2 cm}
 
 3. Name a reason to avoid fitting many interaction terms right from the beginning.
 
-Fitting more terms (especially with little predictive power) increases overfitting and increases your estimated standard error (since $\hat{\sigma}^2=\textrm{SSE}/(n-p-1)$). Therefore, the slopes that actually matter will lose significance, and the model will be worse at fitting new data.
+\vspace{3 cm}
 
 \newpage
 
@@ -349,17 +306,12 @@ Let $Y_{ij}$ be data point $j$ from group $i$ where there are $k$ groups with $n
 
 1. What is $p$ in terms of $k$?
 
-We have $k$ groups, but one will be set as the baseline (intercept), so we have $p=k-1$ predictors not including the intercept.
+\vspace{2 cm}
 
 2. What is $\hat{Y}_{ij}$?  Why is this the case?
 
-$\hat{Y}_{ij}=\bar{Y_i}$ because the only non-zero values in $\vv{X_{ij}}$ for all $(\vv{X_{ij}},Y_{ij})$ in group $i$ are a 1 in the $i^{th}$ position if $i\neq 1$ and a single 1 in the intercept position. Therefore, the predicted value will have to be the same for all $Y_{ij}$ in group $i$, and the prediction that minimizes the squared differences with respect to these observations is the mean of the group $\bar{Y_i}$.
+\vspace{3 cm}
 
 3. Show that the two $F$-statistics are equal.
 
-Using the $p$ we found earlier and the fact that $\hat{Y}_{ij}=\bar{Y_i}$,
-
-$$\begin{aligned}
-\frac{\sum_{i,j}(\hat{Y}_{ij}-\bar{Y})^2/p}{\sum_{i,j}(Y_{ij}-\hat{Y}_{ij})^2/(n-p-1)}&=\frac{\sum_{i,j}(\hat{Y}_{ij}-\bar{Y})^2/(k-1)}{\sum_{i,j}(Y_{ij}-\hat{Y}_{ij})^2/(n-k)}\\
-&=\frac{\sum_{i=1}^kn_i(\bar{Y}_i-\bar{Y})^2/(k-1)}{\sum_{i=1}^k\sum_{j=1}^{n_i}(Y_{ij}-\bar{Y_i})^2/(n-k)}
-\end{aligned}$$
+\vspace{7 cm}

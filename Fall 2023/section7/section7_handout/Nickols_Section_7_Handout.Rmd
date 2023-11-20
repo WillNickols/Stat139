@@ -64,11 +64,7 @@ $X_3$ & 6,760 & 37 \\
 \end{tabular}
 \end{center}
 
-Since the model with $X_1$ has the smallest residual sum of squares, we will test for it being a better predictive model than the intercept-only model. Our test statistic is $$F=\frac{(7200 - 6600)/1}{6600/37}\approx3.36$$ which we test using a $F_{1, 37}$ distribution. We get a p-value of $0.074>0.05$, so we fail to reject the null and conclude that $X_1$, $X_2$, and $X_3$ add no predictive power on their own.
-```{r, cache=TRUE, include=F}
-f_stat <- (7200 - 6600)/(6600/37)
-1 - pf(f_stat, 1, 37)
-```
+\vspace{3 cm}
 
 These problems will deal with a dataset of country-level statistics from [UNdata](https://data.un.org/), [Varieties of Democracy](https://v-dem.net/data/the-v-dem-dataset/), and the [World Bank](https://data.worldbank.org/indicator/AG.LND.PRCP.MM).
 
@@ -79,7 +75,7 @@ countries_2010 <- countries[countries$Year == 2010,]
 
 2. The next three questions will run forwards, backwards, and both-direction variable selection procedures. Predict which model will have the highest $R^2$.
 
-We expect the backwards variable selection procedure to give a model with the highest $R^2$ because it starts with the largest model and is therefore most likely to overfit. Because it starts with many more terms, retaining even a small proportion of spurious significant predictors will result in many more terms in the final model.
+\vspace{2 cm}
 
 3. The following runs a forward variable selection procedure to predict log2 GDP per capita in 2010 from a country's urban population, its proportion of people 60+, its patents in force, its arable land, its energy supply, and its unemployment rate. The procedure starts with an intercept only model and uses an upper scope of all the two-way interaction terms for the variables listed above. The final model is shown along with the $R^2$ and AIC. How many coefficients are retained? Are the p-values reliable?
 
@@ -110,7 +106,7 @@ summary(step_model_1)$coefficients
 c("R2" = round(summary(step_model_1)$r.squared, 3), "AIC" = round(AIC(step_model_1), 3))
 ```
 
-There are 6 predictors retained. The p-values are not reliable since they haven't been corrected for multiple testing (they are likely too low).
+\vspace{3 cm}
 
 4. The following runs a backwards variable selection procedure. The procedure starts with all the two-way interaction terms for the variables listed above. The final model is shown along with the $R^2$ and AIC. Note how the number of coefficients changes.
 
@@ -121,7 +117,7 @@ step_model_2 <- step(lm(log2(GDP) ~ (Urban + `60+` + Patents + Arable + Energy +
 summary(step_model_2)$coefficients
 c("R2" = round(summary(step_model_2)$r.squared, 3), "AIC" = round(AIC(step_model_2), 3))
 ```
-The $R^2$ is slightly higher, and the AIC is slightly lower. The model has 14 predictors, up from 6 before.
+\vspace{3 cm}
 
 5. The following runs a both-direction variable selection procedure. It starts with all the coefficients and has an upper bound of all interactions. The final model is shown along with the $R^2$ and AIC. How does this model compare to the ones above?
 
@@ -134,11 +130,11 @@ step_model_3 <- step(lm(log2(GDP) ~ Urban + `60+` + Patents + Arable + Energy + 
 summary(step_model_3)$coefficients
 c("R2" = round(summary(step_model_3)$r.squared, 3), "AIC" = round(AIC(step_model_3), 3))
 ```
-The both-direction fitting actually found the same model as the forward selection.
+\vspace{3 cm}
 
 6. Based on AIC, which model is the best?  Why didn't the other procedures find the same model?
 
-The backwards procedure produced the lowest AIC (by a small margin), making it the best. Step-wise variable selection uses a local search of adjacent models, so it can get stuck in local minima. Therefore, it is possible for different starting models to converge on different final models.
+\vspace{3 cm}
 
 7. Recall from last week that we looked at various models predicting the proportion of arable land from the precipitation.
 
@@ -177,7 +173,7 @@ for (ncross in ks) {
 
 kable(data.frame("k"=ks, "polynomial"=round(poly_model, 3), "loess"=round(loess_model, 3)))
 ```
-The LOESS model performs better than the polynomial for all $k$. The RMSE decreases for higher $k$ because a smaller proportion of the data is reserved for testing, so more data is used to fit a more accurate model. (A higher $k$ makes cross validation take longer though, which can be problematic for larger models.)
+\vspace{3 cm}
 
 \newpage
 
@@ -188,25 +184,15 @@ In this problem, we'll derive the result for ourselves.
 
 1. First, recall that for a multiple regression model, $Y_i=\beta_0+\beta_1X_{1,i}+...+\beta_pX_{p, i}+\epsilon_i$ with $\epsilon_i\sim\mathcal{N}(0, \sigma^2)$. Also recall that for this distributional assumption, $\hat{\vv{\beta}}$ is the set of parameters that maximize the likelihood function of the whole model. Lastly, recall that in a multiple regression model, the *maximum likelihood estimate* for the residual variance is $\hat\sigma^2=\frac{\sum_{i=1}^n(y_i-\hat{y_i})^2}{n}$ (and note that this is different from our unbiased estimator). Write the maximized likelihood function for the observed data as a function of $\hat{y_i}$, $y_i$, and $\hat\sigma^2$.
 
-$$\prod_{i=1}^n\frac{1}{\hat\sigma\sqrt{2\pi}}\exp\left[-\frac{1}{2}\frac{(y_i - \hat{y_i})^2}{\hat\sigma^2}\right]$$
+\vspace{3 cm}
 
 2. Write the maximized log likelihood function of the observed data as a function of the extra sum of squares ($\textrm{SSE}$). (You will find there are two terms that are constant regardless of the predictors; these can be dropped because we are only interested in comparing AIC between models.)
 
-$$\begin{aligned}
-\log(\hat{L})&=\sum_{j=1}^n-\log\left(\sqrt{\frac{\sum_{i=1}^n(y_i-\hat{y_i})^2}{n}}\right) - \log(\sqrt{2\pi}) -\frac{1}{2}\frac{(y_j - \hat{y_j})^2}{\frac{\sum_{i=1}^n(y_i-\hat{y_i})^2}{n}}\\
-&=\sum_{j=1}^n-\frac{1}{2}\log\left(\frac{\sum_{i=1}^n(y_i-\hat{y_i})^2}{n}\right) - \log(\sqrt{2\pi})-\frac{n}{2}\frac{(y_j - \hat{y_j})^2}{\sum_{i=1}^n(y_i-\hat{y_i})^2}\\
-&=\left(\sum_{j=1}^n-\frac{1}{2}\log\left(\frac{\sum_{i=1}^n(y_i-\hat{y_i})^2}{n}\right)\right) - n\log(\sqrt{2\pi})-\frac{n}{2}\frac{\sum_{j=1}^n(y_j - \hat{y_j})^2}{\sum_{i=1}^n(y_i-\hat{y_i})^2}\\
-&=-\frac{n}{2}\left[\log\left(\frac{\textrm{SSE}}{n}\right)\right] - n\log(\sqrt{2\pi})-\frac{n}{2}
-\end{aligned}$$
-
-Since $n\log(\sqrt{2\pi})$ and $\frac{n}{2}$ do not depend on the predictors, we can drop these terms, so we end up with $$-\frac{n}{2}\left[\log\left(\frac{\textrm{SSE}}{n}\right)\right]$$
-
-Note that the part that actually mattered from the likelihood function was the normalizing constant!
+\vspace{8 cm}
 
 3. Find the Bayes Information Criterion of the fit model. Recall that with $\hat{L}$ as the maximized likelihood function, $$\textrm{BIC} = (p+2)\log(n)-2\log(\hat{L})$$
 
-$$(p+2)\log(n)+n\log\left(\frac{\textrm{SSE}}{n}\right)$$
-In the original formulation of BIC, the first term should actually be $(p+2)\log(n)$ because we are fitting $p$ predictors, an intercept, and a residual standard error. However, this only changes the resulting BIC by a constant for all models of this type, so we (and R functions) drop it.
+\vspace{3 cm}
 
 ```{r, cache=T, warning=FALSE, include=F}
 n <- 100
@@ -234,28 +220,19 @@ Suppose we're performing stepwise variable selection on a linear model with coef
 $$\Lambda(\vv{y})=2\left(\log L(\hat{\theta},\vv{y})-\log L(\theta_0,\vv{y})\right)\sim\chi^2_{1}$$
 Write the equivalent null hypothesis and null test statistic distribution for testing whether $\beta_{k+1}=0$.
 
-We want to test $H_0:\beta_{k+1}=0$ with the null distribution
-$$\Lambda(\vv{y})=2\left(\log L(\beta_{k+1}=\hat{\beta}_{k+1}|\vv{y},\hat{\beta}_0,...,\hat{\beta}_k)-\log L(\beta_{k+1}=0|\vv{y},\hat{\beta}_0,...,\hat{\beta}_k)\right)\sim\chi^2_{1}$$
+\vspace{4 cm}
 
 2. Write the difference in AICs between the larger and smaller model in terms of log likelihoods. Feel free to refer to the log-likelihood as $\log L(\beta_{k+1}|\vv{y},\hat{\beta}_0,...,\hat{\beta}_k)$ (where $\beta_{k+1}$ should be replaced with something in each AIC). If $\textrm{AIC}_2-\textrm{AIC}_1<0$, what inequality does that give?
 
-$$\begin{aligned}\textrm{AIC}_2-\textrm{AIC}_1&=-2\log L(\hat\beta_{k+1}|\vv{y},\hat{\beta}_0,...,\hat{\beta}_k)+2(k+3)+2\log L(0|\vv{y},\hat{\beta}_0,...,\hat{\beta}_k)-2(k+2)\\
-&=-2\log \left(\frac{L(\hat\beta_{k+1}|\vv{y},\hat{\beta}_0,...,\hat{\beta}_k)}{L(0|\vv{y},\hat{\beta}_0,...,\hat{\beta}_k)}\right)+2\\
-\end{aligned}$$
-
-If $\textrm{AIC}_2-\textrm{AIC}_1<0$, this implies $$2\log \left(\frac{L(\hat\beta_{k+1}|\vv{y},\hat{\beta}_0,...,\hat{\beta}_k)}{L(0|\vv{y},\hat{\beta}_0,...,\hat{\beta}_k)}\right)>2$$
+\vspace{6 cm}
 
 3. Under the null that $\beta_{k+1}=0$, what is the asymptotic probability that $\textrm{AIC}_2-\textrm{AIC}_1<0$?
 
-Since this is equivalent to the inequality above,
-$$\begin{aligned}P(\textrm{AIC}_2-\textrm{AIC}_1<0)&=P\left(2\log \left(\frac{L(\hat\beta_{k+1}|\vv{y},\hat{\beta}_0,...,\hat{\beta}_k)}{L(0|\vv{y},\hat{\beta}_0,...,\hat{\beta}_k)}\right)>2\right)\\
-&=1-F_{\chi_1^2}(2)
-\end{aligned}$$
+\vspace{3 cm}
 
 4. If we view each step in the model selection as a likelihood test of whether $\textrm{AIC}_2<\textrm{AIC}_1$, what is the $\alpha$ level we are using for each test?
 
-The $\alpha$ level is the maximum Type I error probability, which is $$1-F_{\chi_1^2}(2)\approx 0.157$$
-That is, with enough data, every time we test an irrelevant coefficient in a stepwise procedure, there is a $0.157$ probability we include it by accident.
+\vspace{3 cm}
 
 ```{r, include=F, cache=T}
 library(MASS)

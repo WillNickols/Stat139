@@ -1,0 +1,83 @@
+Metadata: Details
+Metadata1 Continuous
+Metadata2 Continuous
+Metadata3 Continuous
+Metadata4 Continuous
+Metadata5 Continuous
+Metadata6 Continuous
+Metadata7 Continuous
+Metadata8 Continuous
+Metadata9 Continuous
+Metadata10 Continuous
+Metadata11 Factor Levels 1 2
+Metadata12 Factor Levels 1 2
+Metadata13 Factor Levels 1 2
+Metadata14 Factor Levels 1 2
+Metadata15 Factor Levels 1 2
+Metadata16 Factor Levels 1 2 3 4
+Metadata17 Factor Levels 1 3 4
+Metadata18 Factor Levels 2 3 4
+Metadata19 Factor Levels 1 2 3
+Metadata20 Factor Levels 1 2 3 4
+SyntheticMicrobiomeLognormal
+Number of features: 300
+Number of samples: 50
+Total Reads per Sample: 50000
+Minimum Number of Counts: 0
+in Minimum Number of Samples: 0
+SyntheticMicrobiomeOutlier
+Number of features: 300
+Number of samples: 50
+Max Percent Outliers in a Sample: 0.05
+Percent Samples with Outliers: 0.05
+Outlier Swap: Feature_Outlier_285 Sample: 2
+Outlier Swap: Feature_Outlier_96 Sample: 2
+Outlier Swap: Feature_Outlier_99 Sample: 2
+Outlier Swap: Feature_Outlier_13 Sample: 2
+Outlier Swap: Feature_Outlier_222 Sample: 2
+Outlier Swap: Feature_Outlier_219 Sample: 2
+Outlier Swap: Feature_Outlier_94 Sample: 2
+Outlier Swap: Feature_Outlier_58 Sample: 2
+Outlier Swap: Feature_Outlier_227 Sample: 2
+Outlier Swap: Feature_Outlier_294 Sample: 2
+Outlier Swap: Feature_Outlier_46 Sample: 2
+Outlier Swap: Feature_Outlier_40 Sample: 2
+Outlier Swap: Feature_Outlier_34 Sample: 2
+Outlier Swap: Feature_Outlier_107 Sample: 2
+Outlier Swap: Feature_Outlier_275 Sample: 2
+Outlier Swap: Feature_Outlier_77 Sample: 2
+Outlier Swap: Feature_Outlier_83 Sample: 2
+Outlier Swap: Feature_Outlier_114 Sample: 2
+Outlier Swap: Feature_Outlier_251 Sample: 17
+Outlier Swap: Feature_Outlier_62 Sample: 17
+Outlier Swap: Feature_Outlier_99 Sample: 17
+Outlier Swap: Feature_Outlier_182 Sample: 17
+Outlier Swap: Feature_Outlier_94 Sample: 17
+Outlier Swap: Feature_Outlier_195 Sample: 17
+Outlier Swap: Feature_Outlier_202 Sample: 17
+Outlier Swap: Feature_Outlier_293 Sample: 17
+SyntheticMicrobiomespike_n_1_m_1
+Number of features: 300
+Number of samples: 50
+Percent spikes: 0.03
+Multiplier: 1
+Multivariate Parameter: 1
+Minimum Spiked-in Samples: 5
+Feature_spike_n_1_m_1_106
+Metadata19_Level_2
+Feature_spike_n_1_m_1_80
+Metadata8
+Feature_spike_n_1_m_1_299
+Metadata7
+Feature_spike_n_1_m_1_54
+Metadata5
+Feature_spike_n_1_m_1_56
+Metadata3
+Feature_spike_n_1_m_1_42
+Metadata9
+Feature_spike_n_1_m_1_182
+Metadata10
+Feature_spike_n_1_m_1_62
+Metadata10
+Feature_spike_n_1_m_1_107
+Metadata4

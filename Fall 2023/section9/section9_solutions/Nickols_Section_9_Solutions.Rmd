@@ -30,341 +30,511 @@ urlcolor: blue
 
 Make sure to sign in on the [google form](https://forms.gle/xm1DfzuZFNcWU6fH8) (I send a list of which section questions are useful for which pset questions afterwards)
 
-Pset 9 due Friday 11/17
+Final project proposals due 11/21
 
 # Introductions
-- One question or thought related to lecture last week (Decision trees, bagging, random forests)
+- One question or thought related to lecture last week (Weighted least squares, quantile regression, mixed effects models)
 
 ```{r, echo=F, warning=F, message=F, cache=F}
-list.of.packages <- c("ggplot2", "randomForest", "rpart", "rpart.plot", "dplyr", "reshape2")
+list.of.packages <- c("ggplot2", "lme4", "reshape2", "gridExtra", "dplyr", "MASS", "nlme")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
+library(lme4)
 library(ggplot2)
-library(randomForest)
-library(dplyr)
-library(rpart)
-library(rpart.plot)
 library(reshape2)
+library(gridExtra)
+library(dplyr)
+library(MASS)
+library(nlme)
 ```
 
-# Bagging and counting
+# Many ways to peel an orange
 
-In bagging, data points are bootstrapped and used to build overfit decision trees. By taking the average of these decision trees, we reduce the variance of predictions relative to a single tree built on all the data. The reason the trees are different is that they incorporate different data points; trees built from the same data points will be the same. Therefore, knowing how many data points overlap between bootstrap samples gives a rough measure of how different the trees will be.
+Recall the following linear model extensions:
 
-1. Suppose we bootstrap $n$ data points from our original $n$ data points. Find the expected number of unique bootstrapped data points. Use the fact that $\left(1-\frac{1}{n}\right)^n\approx e^{-1}$ for large $n$ to approximate the expected number. (Hint: Think of the number of unique data points as a sum of indicators for each data point being unique. Also, recall that for $r<1$, $\sum_{j=1}^{n}r^{j-1}=\frac{1-r^n}{1-r}$)
+- Heteroscedasticity-consistent standard errors: $\vv{Y}=\mathbf{X}\vv{\beta}+\vv{\epsilon}$, $\epsilon\sim \textrm{MVN}(\vv{0}, \mathbf{\Sigma})$ where $\mathbf{\Sigma}$ is a diagonal matrix with non-identical entries.
+- Weighted least squares: $\vv{Y}=\mathbf{X}\vv{\beta}+\vv{\epsilon}$, $\epsilon\sim \textrm{MVN}(\vv{0},\mathbf{W}^{-1}\sigma^2\mathbf{I}_{n\times n})$ where $\mathbf{W}$ is a diagonal matrix of weights.
+- Huber's method: Minimize $\textrm{loss}=\sum_{i}^ng(\hat\epsilon_i)$ with $$g(x)=\begin{cases} 
+      x^2/2 & |x|<c \\
+      c|x| - c^2/2 & |x|\geq c
+      \end{cases}$$
+- Block correlations: $\vv{Y}=\mathbf{X}\vv{\beta}+\vv{\epsilon}$, $\epsilon\sim \textrm{MVN}(\vv{0}, \mathbf{\Sigma})$ with a covariance matrix like $$\mathbf{\Sigma}=\begin{bmatrix}
+1 & \rho_1 & \rho_1 & 0 & 0 \\
+\rho_1 & 1 & \rho_1 & 0 & 0 \\
+\rho_1 & \rho_1 & 1 & 0 & 0 \\
+0 & 0 & 0 & 1 & \rho_2 \\
+0 & 0 & 0 & \rho_2 & 1 \\
+\end{bmatrix}	$$
+- Autoregressive: $\vv{Y}=\mathbf{X}\vv{\beta}+\vv{\epsilon}$, $\epsilon\sim \textrm{MVN}(\vv{0}, \mathbf{\Sigma})$ with a covariance matrix like $$\mathbf{\Sigma}=\begin{bmatrix}
+1 & \rho & \rho^2 & \rho^3 & \rho^4 \\
+\rho & 1 & \rho & \rho^2 & \rho^3 \\
+\rho^2 & \rho & 1 & \rho & \rho^2 \\
+\rho^3 & \rho^2 & \rho & 1 & \rho \\
+\rho^4 & \rho^3 & \rho^2 & \rho & 1 \\
+\end{bmatrix}	$$
+- Random intercepts: $Y_{ij}\sim\alpha + \alpha_i+\beta X_{ij}+\epsilon_{ij}$ with $\epsilon_{ij}\sim\mathcal{N}(0, \sigma^2_Y)$ and $\alpha_i\sim\mathcal{N}(0, \sigma^2_\alpha)$. (Note that this version explicitly includes a fixed intercept and a random intercept with mean 0. Random effects as you'll see them elsewhere (and in `lmer`) are usually specified to have mean 0, so including the fixed effect separately is a good practice.)
+- Random slopes: $Y_{ij}\sim\alpha +(\beta + \beta_i)X_{ij}+\epsilon_{ij}$ with $\epsilon_{ij}\sim\mathcal{N}(0, \sigma^2_Y)$ and $\beta_i\sim\mathcal{N}(0, \sigma^2_\beta)$.
 
-Let $X$ be the number of unique bootstrapped data points and $I_i$ be an indicator that draw $i$ is unique.
+1. For each of the scenarios below, which of the above linear model extensions would you use? Why?
 
-$$\begin{aligned}E(X)&=E\left(\sum_{i=1}^nI_i\right)\\
-&=\sum_{i=1}^nP(\textrm{draw } i \textrm{ is unique})\\
-&=\sum_{i=1}^n\left(\frac{n-1}{n}\right)^{i-1}\\
-&=\frac{1-\left(\frac{n-1}{n}\right)^n}{1-\left(\frac{n-1}{n}\right)}\\
-&=n\left(1-\left(\frac{n-1}{n}\right)^n\right)\\
-&\approx n(1-e^{-1})\end{aligned}$$
-where the second equality is by the fundamental bridge and the third is from the birthday problem.
+- Stock price over a week: Autoregressive (a high residual on one day might indicate a high residual on the next day)
+- Wheat yield vs phosphorus fertilizer use in various Kansas counties: Block correlation (residuals are correlated within a county), random intercepts (different counties have different baseline wheat yields), or random slopes (phosphorus use changes wheat yield differently in each county)
+- Soil nitrate concentration vs fertilizer use where the nitrate measurements are taken with instruments of varying precision: Heteroscedasticity-consistent standard errors or weighted regression (less precise instruments have higher standard errors or lower weights)
+- Spotify listens vs release year: Huber's method (trying to mitigate the outlier effect of songs that are very popular)
+- The day in the year leaves start to fall vs latitude for various tree types: Block correlation (trees of the same type lose their leaves around the same time), random intercepts (trees of the same type have different baseline leaf shedding times), or random slopes (different trees respond to different latitudes to lose their leaves at different times)
 
-```{r, include=F, cache=T}
-n <- 1000
-x <- replicate(100000, length(unique(sample(1:n, n, replace=T))))
-mean(x)
-n * (1 - ((n - 1)/n)^n)
-n * (1 - exp(-1))
-```
+2. Which line is which in the following models?
 
-2. What is the expected proportion of data points overlapping between two bootstrap samples of $n$ items each (i.e., the proportion of data points in one bootstrap sample that are also in the other)?
-
-Let $X$ be the number of overlaps and $I_i$ be an indicator of whether the $i^{th}$ data point in the first bootstrap sample is in the second bootstrap sample.
-
-$$\begin{aligned}E(X)&=E\left(\sum_{i=1}^nI_i\right)\\
-&=\sum_{i=1}^nP(\textrm{draw } i \textrm{ is in the other sample})\\
-&=\sum_{i=1}^n\left(1-\left(\frac{n-1}{n}\right)^{n}\right)\\
-&=n\left(1-\left(\frac{n-1}{n}\right)^n\right)\\
-&\approx n(1-e^{-1})\end{aligned}$$
-where the third equality is from the fact that the probability of draw $i$ being in the other sample is the same as $1$ minus the probability draw $i$ is not in the other sample.
-
-```{r, include=F, cache=T}
-n <- 1000
-x <- replicate(100000, sum(sample(1:n, n, replace=T) %in% sample(1:n, n, replace=T)))
-mean(x)
-n * (1 - exp(-1))
-```
-
-\newpage
-
-# Categorical decision trees
-
-In this class, we mainly look at decision trees as a non-parametric way of making a prediction about a continuous variable of interest. However, another (probably more common) use of decision trees is in predicting categorical variables. While looking at the sum of squared errors is a reasonable way to build decision trees for continuous predictions, other methods can be more useful for categorical predictions. This question will look at two such options.
-
-1. A first method involves calculating the entropy of the parent and child nodes. Entropy is defined as:
-$$E=-\sum_{i=1}^kp_i\log p_i$$
-where $p_i$ is the proportion of the items in the node from class $i$. (If $p_i=0$, we treat its $p_i\log_2p_i$ term as $0$ since $p_i\log_2p_i\rightarrow0$ as $p_i\rightarrow0$.)  When splitting using this metric, the parent node's entropy $E_{\textrm{Parent}}$ is calculated, and the weighted average of the children's entropies are calculated as $$\frac{1}{n_{\textrm{Left}}}E_{\textrm{Left}}+\frac{1}{n_{\textrm{Right}}}E_{\textrm{Right}}$$  The split that yields the lowest entropy is chosen. Show that the entropy of a node is minimized when the node is "pure" (there are only items of one class in the node).
-
-Because $0\leq p_i\leq 1$, $\log p_i\leq 0$ with equality only when $p_i=1$. With $p_i=1$ for one entry and $p_i=0$ for the rest, the entropy is $0$. However, whenever there is a $p_i$ such that $0<p_i<1$, there will be a term $p_i\log p_i<0$, so the entropy will be positive since all the terms in the sum are at most 0. Thus, entropy is minimized when all items are in one class.
-
-2. Show that the entropy of the node is maximized when there are equal proportions of items from each class in the node. Hint: Consider the function $g(p)=p\log p$. Also, you should use Jensen's inequality for sums: $$\frac{1}{k}\sum_{i=1}^kg(p_i)\geq g\left(\frac{1}{k}\sum_{i=1}^kp_i\right)$$ when $g$ is convex.
-
-First, $g$ is convex because $g'(p)=1+\log(p)$ and $g''(p)=\frac{1}{p}>0$. Therefore, Jensen's inequality gives 
-$$\begin{aligned}\frac{1}{k}\sum_{i=1}^kg(p_i)\geq g\left(\frac{1}{k}\sum_{i=1}^kp_i\right)&\implies \frac{1}{k}\sum_{i=1}^k g(p_i)\geq g(1/k)\\
-&\implies E/k\leq -1/k\log(1/k)\\
-&\implies E\leq \log(k)\end{aligned}$$
-where the second implication is from plugging in the formula for entropy and using the definition of $g$. If we let $p_i=1/k$, we see that 
-$$\begin{aligned}E&=-\sum_{i=1}^kp_i\log p_i\\
-&=\sum_{i=1}^k-\frac{1}{k}\log(1/k)\\
-&=-\log(1/k)\\
-&=\log(k)\end{aligned}$$
-Thus, $p_i=1/k$ for all $i$ maximizes the entropy.
-
-3. Explain why these results match our intuition of when a node should be split or not.
-
-When a node is pure, there is no reason to split it, and its entropy is minimized, so we wouldn't split it. When a node contains an equal proportion of items from each category, its entropy is maximized, and we should split it.
-
-4. Because calculating $\log$s can be computationally expensive, another method is to maximize the Gini value: $$G=\sum_{i=1}^kp_i^2$$ where $p_i$ is the proportion of the items in the node from class $i$. Explain why the Gini value can be interpreted as the probability that a randomly chosen item in the node would be assigned its correct class when assigning classes randomly according to the proportions in the node.
-
-We can interpret this as LOTP where we want $P(\textrm{Correct classification})$, so we use $$P(\textrm{Correct classification})=\sum_{i=1}^kP(\textrm{Correct classification}|\textrm{Item in class }i)P(\textrm{Item in class }i)$$
-Then, $P(\textrm{Item in class }i)=p_i$ since we choose randomly according to the node proportions, and $P(\textrm{Correct classification}|\textrm{Item in class }i)=p_i$ since the probability of it being randomly assigned the (correct) class $i$ is also $p_i$, so the sum comes out to $G$.
-
-5. Find when the Gini value is maximized.
-
-$$1=\left(\sum_{i=1}^kp_i\right)^2=\sum_{i=1}^kp_i^2+2\sum_{i<j}p_ip_j\implies \sum_{i=1}^kp_i^2\leq 1$$ with equality when $p_ip_j=0$ for all $i\neq j$. This only occurs when one $p_i=1$ and the rest are $0$.
-
-6. Show that the Gini value is minimized when all classes have equal proportions in the node.
-
-Since $x^2$ is a convex function, Jensen's inequality shows $$\frac{1}{k}\sum_{i=1}^kp_i^2\geq \left(\frac{1}{k}\sum_{i=1}^kp_i\right)^2=1/k^2$$
-Multiplying both sides by $k$ gives $\sum_{i=1}^kp_i^2\geq 1/k$, and this has equality when $p_i=1/k$.
-
-7. Do we want to split a node with a high or low Gini value?
-
-We want to split a node with a low Gini value since this is when the node has equal proportions from each category. When the Gini is maximized at 1, the node is pure, and we don't want to split it. The following plot shows that the Gini index is minimized when the entropy is maximized for a 2-class node, consistent with us splitting nodes with high entropy and low Gini indices.
+- One line is a standard OLS; the other uses weighted regression.
 
 ```{r, cache=T, echo=F, fig.width=4.5, fig.height=3, fig.align='center', warning=F}
-p <- seq(0.001, 0.999, 0.001)
-entropy = -(p * log(p, 2) + (1-p) * log(1-p, 2))
-gini = p^2 + (1-p)^2
+set.seed(1)
+x <- runif(100,0,10)
+y <- c(x[1:50] + rnorm(50, 0, 1), 2 * x[51:100] + rnorm(50, 0, 5))
+cols <- c(rep("Low variance", 50), rep("High variance", 50))
+weights <- c(rep(1/1, 50), rep(1/5, 50))
+df <- data.frame(x, y, Variance=cols, weights)
 
-df = data.frame(p=rep(p, 2), 
-                value=c(entropy, gini), 
-                method=rep(c("Entropy", "Gini"), each=length(p)))
+lm1 <- lm(y ~ x, weights = weights, df)
 
-ggplot(df, aes(x=p, y=value, color=method)) + 
-  geom_line(linewidth=1.5) + 
-  theme_bw() + 
-  ylab("Value") + 
-  xlab("Class 1 proportion") + 
-  labs(color="Method")
+dummy_x <- x
+dummy_y <- predict(lm1)
+dummy_df <- data.frame(dummy_x, dummy_y, Variance=cols)
+
+plot1 <- ggplot(df, aes(y=y, x=x, col=Variance)) + 
+  geom_point() + 
+  geom_line(data=dummy_df, aes(y=dummy_y, x=dummy_x), col="blue", size=1) + 
+  geom_smooth(method = "lm", formula = 'y~x', aes(group=1), se = F, col="red", size=1) + 
+  theme_bw()
+
+saveRDS(plot1, "plot1.RDS")
 ```
+```{r, cache=F, echo=F, fig.width=4.5, fig.height=3, fig.align='center', warning=F}
+readRDS(file = "plot1.RDS")
+```
+
+Blue is the weighted regression. It weights low variance observations more heavily as expected.
+
+- One line is a standard OLS; the other uses Huber's method.
+
+```{r, cache=F, echo=F, fig.width=4.5, fig.height=3, fig.align='center', warning=F}
+set.seed(1)
+x <- sort(runif(100,0,10))
+y <- c(x + rnorm(100, 0, 1))
+y[1:10] <- y[1:10] - rexp(10, 1/3)
+y[91:100] <- y[91:100] + rexp(10, 1/3)
+df <- data.frame(x, y)
+
+rlm1 = rlm(y ~ x, df)
+
+dummy_x <- x
+dummy_y <- predict(rlm1)
+dummy_df <- data.frame(dummy_x, dummy_y)
+
+plot2 <- ggplot(df, aes(y=y, x=x)) + 
+  geom_point() + 
+  geom_line(data=dummy_df, aes(y=dummy_y, x=dummy_x), col="blue", size=1) + 
+  geom_smooth(method = "lm", formula = 'y~x', aes(group=1), se = F, col="red", size=1) + 
+  theme_bw()
+
+saveRDS(plot2, "plot2.RDS")
+```
+
+```{r, cache=F, echo=F, fig.width=4.5, fig.height=3, fig.align='center', warning=F}
+readRDS(file = "plot2.RDS")
+```
+
+Blue is Huber's method. It is not as sensitive to outliers.
+
+- One line is a standard OLS; the other uses autoregression.
+
+```{r, cache=F, echo=F, fig.width=4.5, fig.height=3, fig.align='center', warning=F}
+set.seed(2)
+x <- sort(runif(100,0,10))
+rho = 0.9
+exponent <- abs(matrix(1:100 - 1, nrow = 100, ncol = 100, byrow = TRUE) -  (1:100 - 1))
+Sigma = rho^exponent
+y <- mvrnorm(1, x, Sigma)
+df <- data.frame(x, y, id=1:100)
+
+gls1 = gls(y ~ x, df, cor=corAR1(form = ~id))
+
+dummy_x <- x
+dummy_y <- predict(gls1)
+dummy_df <- data.frame(dummy_x, dummy_y)
+
+plot3 <- ggplot(df, aes(y=y, x=x)) + 
+  geom_point() + 
+  geom_line(data=dummy_df, aes(y=dummy_y, x=dummy_x), col="red", size=1) + 
+  geom_smooth(method = "lm", formula = 'y~x', aes(group=1), se = F, col="blue", size=1) + 
+  theme_bw()
+
+saveRDS(plot3, "plot3.RDS")
+```
+
+```{r, cache=F, echo=F, fig.width=4.5, fig.height=3, fig.align='center', warning=F}
+readRDS(file = "plot3.RDS")
+```
+
+Red is the autoregression. It's less influenced by tightly correlated nearby points.
 
 \newpage
 
-# The Entire Arboretum
+# Meta-analysis analysis
 
-The packages `rpart` and `randomForest` will contain most of the functions for decision trees and random forests. The most important functions for us will be:
+One common use of mixed effects models is in meta-analysis to aggregate the results of multiple studies. This question will explore various methods of meta-analysis aggregation.
 
-- `rpart(formula, data, control)` with `control` as `list(minsplit=1,cp=0,maxdepth=20)`, where `minsplit` says we want the node to be split if it has at least 1 observation; `cp` (complexity parameter) says we will accept any improvement in fit; and `maxdepth` is the maximum node depth.
-- `prune(tree, cp)` where `cp` is the complexity parameter.
-- `randomForest(formula, data, maxnodes, mtry, ntree)` where `mtry` is the number of variables randomly sampled as candidates at each split, and `ntree` is the number of trees to grow.
+1. A common plot in meta-analysis is a forest plot, showing the mean and standard error of some quantity of interest as determined by various studies as well as an aggregated mean and standard error. Given the following forest plots, plot the approximate mean and standard error for the aggregated effect from a linear mixed effects model.
 
-These problems will deal with a dataset of country-level statistics from [UNdata](https://data.un.org/), [Varieties of Democracy](https://v-dem.net/data/the-v-dem-dataset/), and the [World Bank](https://data.worldbank.org/indicator/AG.LND.PRCP.MM).
+```{r, cache=F, echo=F, fig.width=6, fig.height=4.5, fig.align='center', warning=F}
+# Version 1
+
+set.seed(1)
+
+true_effect = 1
+n_studies = 9
+
+# Effects observed in each study
+study_effects = rnorm(n_studies, true_effect, 0.1)
+
+# Number of participants in each study
+study_ns = floor(rpois(n_studies, 50))
+
+# Stores all x and y observations and the study they come from
+df = matrix(nrow = 0, ncol = 3)
+
+# Stores mean, sd, n for each study
+stats_df = matrix(nrow = n_studies, ncol = 4)
+
+for (i in 1:n_studies) {
+  study_n = study_ns[i]
+  xs = rnorm(study_n, 0, 1)
+  ys = rnorm(study_n, xs * study_effects[i], 2)
+  df = rbind(df, cbind(xs, ys, study = rep(i, study_n)))
+  stats_df[i, 1:2] = summary(lm(ys ~ xs))$coefficients[2, 1:2]
+  stats_df[i, 3] = study_n
+}
+stats_df[1:nrow(stats_df), 4] = 1:n_studies
+
+df = data.frame(df)
+
+# Fit meta-analysis lmer
+lmer1 = suppressMessages(lmer(ys ~ xs + (xs - 1 || study), data = df))
+
+stats_df = data.frame(stats_df)
+colnames(stats_df) = c("mean", "sd", "n", "study")
+stats_df$study <- as.character(stats_df$study)
+
+stats_df[nrow(stats_df) + 1, ] = c(summary(lmer1)$coefficients[2, 1:2], NA, NA)
+stats_df[nrow(stats_df), 4] = "Mixed effects"
+
+plot1 <- ggplot(stats_df, aes(x=study, y=mean)) + 
+  geom_point()+
+  geom_errorbar(aes(ymin=mean-2*sd, ymax=mean+2*sd), width=.2,
+                position=position_dodge(0.05)) + 
+  ylab("Mean +/- 2 StDev") + 
+  xlab("Study") + 
+  theme_bw()
+
+# Version 2
+
+# Effects observed in each study
+study_effects = rnorm(n_studies, true_effect, 2)
+
+# Number of participants in each study
+study_ns = floor(rpois(n_studies, 50))
+
+# Stores all x and y observations and the study they come from
+df = matrix(nrow = 0, ncol = 3)
+
+# Stores mean, sd, n for each study
+stats_df = matrix(nrow = n_studies, ncol = 4)
+
+for (i in 1:n_studies) {
+  study_n = study_ns[i]
+  xs = rnorm(study_n, 0, 1)
+  ys = rnorm(study_n, xs * study_effects[i], 1)
+  df = rbind(df, cbind(xs, ys, study = rep(i, study_n)))
+  stats_df[i, 1:2] = summary(lm(ys ~ xs))$coefficients[2, 1:2]
+  stats_df[i, 3] = study_n
+}
+stats_df[1:nrow(stats_df), 4] = 1:n_studies
+
+df = data.frame(df)
+
+# Fit meta-analysis lmer
+lmer1 = suppressMessages(lmer(ys ~ xs + (xs - 1 || study), data = df))
+
+stats_df = data.frame(stats_df)
+colnames(stats_df) = c("mean", "sd", "n", "study")
+stats_df$study <- as.character(stats_df$study)
+
+stats_df[nrow(stats_df) + 1, ] = c(summary(lmer1)$coefficients[2, 1:2], NA, NA)
+stats_df[nrow(stats_df), 4] = "Mixed effects"
+
+plot2 <- ggplot(stats_df, aes(x=study, y=mean)) + 
+  geom_point()+
+  geom_errorbar(aes(ymin=mean-2*sd, ymax=mean+2*sd), width=.2,
+                position=position_dodge(0.05)) + 
+  ylab("Mean +/- 2 StDev") + 
+  xlab("Study") + 
+  theme_bw()
+
+grid.arrange(plot1, plot2, nrow=2)
+```
+
+2. Sometimes, studies will not make available all their individual data points. In these cases, we might only have a point estimate and standard error for a particular estimand of interest. Assume that for study $i$ we have our statistic of interest $$\hat\beta_i\sim\mathcal{N}(\beta,\sigma_{\hat\beta_i}^2)$$ This model specifies that there is some underlying effect $\beta$ and that each study will find some $\hat\beta_i$ with a standard error based on the study's sample size etc. If we have $n_{\textrm{studies}}$ each with a $\hat{\beta}_i$ and a $\sigma_{\hat\beta_i}^2$, use maximum likelihood estimation to find a point estimate for $\beta$.
+
+Since the standard errors are known, we can keep only the pieces that depend on $\beta$, 
+$$L\propto\prod_{i=1}^{n_{\textrm{studies}}}e^{\frac{1}{2}(\frac{\hat\beta_i-\beta}{\sigma_{\hat\beta_i}})^2}\implies \log(L)=\sum_{i=1}^{n_{\textrm{studies}}}\frac{1}{2}\left(\frac{\hat\beta_i-\beta}{\sigma_{\hat\beta_i}}\right)^2$$
+
+Taking the derivative and setting it equal to 0 shows $$0=\sum_{i=1}^{n_{\textrm{studies}}}\left(\frac{\hat\beta_i-\hat\beta}{\sigma_{\hat\beta_i}}\right)=\sum_{i=1}^{n_{\textrm{studies}}}\left(\frac{\hat\beta_i}{\sigma_{\hat\beta_i}}\right)-\hat\beta\sum_{i=1}^{n_{\textrm{studies}}}\left(\frac{1}{\sigma_{\hat\beta_i}}\right)\implies \hat\beta = \frac{\sum_{i=1}^{n_{\textrm{studies}}}\left(\frac{\hat\beta_i}{\sigma_{\hat\beta_i}}\right)}{\sum_{i=1}^{n_{\textrm{studies}}}\left(\frac{1}{\sigma_{\hat\beta_i}}\right)}$$
+
+3. Find the distribution of this $\hat{\beta}$ assuming the studies are independent.
+
+Each of the $\hat{\beta}_i$s are Normal, so $\hat{\beta}$ has a Normal distribution. Its mean is $$E(\hat{\beta})=\frac{\sum_{i=1}^{n_{\textrm{studies}}}\left(\frac{E(\hat\beta_i)}{\sigma_{\hat\beta_i}}\right)}{\sum_{i=1}^{n_{\textrm{studies}}}\left(\frac{1}{\sigma_{\hat\beta_i}}\right)}=\beta$$
+Its variance is
+$$\textrm{Var}(\hat{\beta})=\frac{\sum_{i=1}^{n_{\textrm{studies}}}\left(\frac{\textrm{Var}(\hat\beta_i)}{\sigma_{\hat\beta_i}^2}\right)}{\left(\sum_{i=1}^{n_{\textrm{studies}}}\left(\frac{1}{\sigma_{\hat\beta_i}}\right)\right)^2}=\frac{n_{\textrm{studies}}}{{\left(\sum_{i=1}^{n_{\textrm{studies}}}\left(\frac{1}{\sigma_{\hat\beta_i}}\right)\right)^2}}$$
+Therefore, $$\hat{\beta}\sim\mathcal{N}\left(\beta, \frac{n_{\textrm{studies}}}{{\left(\sum_{i=1}^{n_{\textrm{studies}}}\left(\frac{1}{\sigma_{\hat\beta_i}}\right)\right)^2}}\right)$$
+
+4. The code below simulates data from the following scenarios:
+- In the first scenario, there is a true effect $\beta$ that holds in all the studies. The only thing that differs by study is the sample size. Therefore, for study $i$, the $j^{th}$ observation is given by $Y_{ij}=\beta_0 + \beta X_{ij}+\epsilon_{ij}$ with $\epsilon_{ij}\sim\mathcal{N}(0, \sigma_Y^2)$.
+- In the second scenario, the effect in study $i$ is $\beta_i\sim\mathcal{N}(\beta, \sigma_\beta^2)$. Then, for study $i$, the $j^{th}$ observation is given by $Y_{ij}=\beta_0 + \beta_i X_{ij}+\epsilon_{ij}$ with $\epsilon_{ij}\sim\mathcal{N}(0, \sigma_Y^2)$.
+
+We will consider 5 methods:
+
+- Use the likelihood method above
+- Find $\hat\beta_i$ for each study and take the average to estimate $\beta$.
+- Use a mixed effects model `ys ~ xs + (xs - 1 | study)` (random slopes, no random intercepts)
+- Combine all the data points and run a linear model with `ys ~ xs + xs:as.factor(study_id)`
+- Combine all the data points and run a linear model with `ys ~ xs`
+
+Interpret the outputs: how do the methods perform on the two scenarios?
+  
+```{r, warning=F, cache=T, echo=F}
+set.seed(139)
+
+nsims = 10000
+
+output_df = matrix(nrow = nsims, ncol = 5)
+
+true_effect = 1
+n_studies = 9
+b_0 = 120
+
+for (nsim in 1:nsims) {
+  # size of studies
+  study_ns = floor(rexp(n_studies, 1/50)) + 10
+  
+  df = matrix(nrow = 0, ncol = 3)
+  stats_df = matrix(nrow = n_studies, ncol = 4)
+  
+  for (i in 1:n_studies) {
+    study_n = study_ns[i]
+    xs = rnorm(study_n, 0, 1)
+    ys = b_0 + rnorm(study_n, xs * true_effect, 10)
+    df = rbind(df, cbind(xs, ys, study = rep(i, study_n)))
+    stats_df[i, 1:2] = summary(lm(ys ~ xs))$coefficients[2, 1:2]
+    stats_df[i, 3] = study_n
+  }
+  stats_df[1:nrow(stats_df), 4] = 1:n_studies
+  
+  df = data.frame(df)
+  
+  lmer1 = suppressMessages(lmer(ys ~ xs + (xs - 1 | study), data = df))
+
+  stats_df = data.frame(stats_df)
+  colnames(stats_df) = c("mean", "sd", "n", "study")
+  stats_df$study <- as.character(stats_df$study)
+  
+  stats_df[nrow(stats_df) + 1, ] = list(sum(stats_df$mean/stats_df$sd)/sum(1/stats_df$sd), NA, NA, NA)
+  stats_df[nrow(stats_df), 4] = "Likelihood"
+  
+  stats_df[nrow(stats_df) + 1, ] = list(mean(stats_df$mean), NA, NA, NA)
+  stats_df[nrow(stats_df), 4] = "Raw means"
+  
+  stats_df[nrow(stats_df) + 1, ] = c(summary(lmer1)$coefficients[2, 1:2], NA, NA)
+  stats_df[nrow(stats_df), 4] = "Mixed effects"
+  
+  stats_df[nrow(stats_df) + 1, ] = c(summary(lm(ys ~ xs + xs:as.factor(study), data = df))$coefficients[2, 1:2], NA, NA)
+  stats_df[nrow(stats_df), 4] = "Fixed effects with interactions"
+  
+  stats_df[nrow(stats_df) + 1, ] = c(summary(lm(ys ~ xs, data = df))$coefficients[2, 1:2], NA, NA)
+  stats_df[nrow(stats_df), 4] = "Fixed effects no interactions"
+  
+  output_df[nsim, ] = stats_df[n_studies + (1:5), 1]
+}
+
+output_df = melt(output_df)
+colnames(output_df) <- c("Index", "Method", "Beta")
+output_df$Method <- case_when(output_df$Method == 1 ~ "1. Likelihood",
+                              output_df$Method == 2 ~ "2. Raw means",
+                              output_df$Method == 3 ~ "3. Linear mixed effects",
+                              output_df$Method == 4 ~ "4. Fixed effects with interaction",
+                              output_df$Method == 5 ~ "5. Fixed effects no interaction")
+
+comparison_df = data.frame(matrix(nrow = 5, ncol = 4))
+comparison_df[, 1] = c("Likelihood", "Raw means", "Linear mixed effects", "Fixed effects with interaction", "Fixed effects no interaction")
+comparison_df[, 2] = as.numeric(by(output_df$Beta, output_df$Method, mean)) - true_effect
+comparison_df[, 3] = as.numeric(by(output_df$Beta, output_df$Method, sd))
+comparison_df[, 4] = c(sum((output_df$Beta[output_df$Method=="1. Likelihood"] - true_effect)^2),
+                       sum((output_df$Beta[output_df$Method=="2. Raw means"] - true_effect)^2),
+                       sum((output_df$Beta[output_df$Method=="3. Linear mixed effects"] - true_effect)^2),
+                       sum((output_df$Beta[output_df$Method=="4. Fixed effects with interaction"] - true_effect)^2),
+                       sum((output_df$Beta[output_df$Method=="5. Fixed effects no interaction"] - true_effect)^2)) / nsims
+
+comparison_df[,2:4] <- apply(comparison_df[,2:4], 2, round, digits=3)
+
+colnames(comparison_df) <- c("Method", "Bias", "SE", "MSE")
+
+comparison_df
+```
+
+```{r, warning=F, cache=T, echo=F}
+set.seed(139)
+
+nsims = 10000
+
+output_df = matrix(nrow = nsims, ncol = 5)
+
+true_effect = 1
+n_studies = 9
+b_0 = 120
+
+for (nsim in 1:nsims) {
+  # beta_i
+  study_effects = rnorm(n_studies, true_effect, 2)
+  
+  # size of studies
+  study_ns = floor(rexp(n_studies, 1/50)) + 10
+  
+  df = matrix(nrow = 0, ncol = 3)
+  stats_df = matrix(nrow = n_studies, ncol = 4)
+  
+  for (i in 1:n_studies) {
+    study_n = study_ns[i]
+    xs = rnorm(study_n, 0, 1)
+    ys = b_0 + rnorm(study_n, xs * study_effects[i], 10)
+    df = rbind(df, cbind(xs, ys, study = rep(i, study_n)))
+    stats_df[i, 1:2] = summary(lm(ys ~ xs))$coefficients[2, 1:2]
+    stats_df[i, 3] = study_n
+  }
+  stats_df[1:nrow(stats_df), 4] = 1:n_studies
+  
+  df = data.frame(df)
+  
+  lmer1 = suppressMessages(lmer(ys ~ xs + (xs - 1 | study), data = df))
+
+  stats_df = data.frame(stats_df)
+  colnames(stats_df) = c("mean", "sd", "n", "study")
+  stats_df$study <- as.character(stats_df$study)
+  
+  stats_df[nrow(stats_df) + 1, ] = list(sum(stats_df$mean/stats_df$sd)/sum(1/stats_df$sd), NA, NA, NA)
+  stats_df[nrow(stats_df), 4] = "Likelihood"
+  
+  stats_df[nrow(stats_df) + 1, ] = list(mean(stats_df$mean), NA, NA, NA)
+  stats_df[nrow(stats_df), 4] = "Raw means"
+  
+  stats_df[nrow(stats_df) + 1, ] = c(summary(lmer1)$coefficients[2, 1:2], NA, NA)
+  stats_df[nrow(stats_df), 4] = "Mixed effects"
+  
+  stats_df[nrow(stats_df) + 1, ] = c(summary(lm(ys ~ xs + xs:as.factor(study), data = df))$coefficients[2, 1:2], NA, NA)
+  stats_df[nrow(stats_df), 4] = "Fixed effects with interactions"
+  
+  stats_df[nrow(stats_df) + 1, ] = c(summary(lm(ys ~ xs, data = df))$coefficients[2, 1:2], NA, NA)
+  stats_df[nrow(stats_df), 4] = "Fixed effects no interactions"
+  
+  output_df[nsim, ] = stats_df[n_studies + (1:5), 1]
+}
+
+output_df = melt(output_df)
+colnames(output_df) <- c("Index", "Method", "Beta")
+output_df$Method <- case_when(output_df$Method == 1 ~ "1. Likelihood",
+                              output_df$Method == 2 ~ "2. Raw means",
+                              output_df$Method == 3 ~ "3. Linear mixed effects",
+                              output_df$Method == 4 ~ "4. Fixed effects with interaction",
+                              output_df$Method == 5 ~ "5. Fixed effects no interaction")
+
+comparison_df = data.frame(matrix(nrow = 5, ncol = 4))
+comparison_df[, 1] = c("Likelihood", "Raw means", "Linear mixed effects", "Fixed effects with interaction", "Fixed effects no interaction")
+comparison_df[, 2] = as.numeric(by(output_df$Beta, output_df$Method, mean)) - true_effect
+comparison_df[, 3] = as.numeric(by(output_df$Beta, output_df$Method, sd))
+comparison_df[, 4] = c(sum((output_df$Beta[output_df$Method=="1. Likelihood"] - true_effect)^2),
+                       sum((output_df$Beta[output_df$Method=="2. Raw means"] - true_effect)^2),
+                       sum((output_df$Beta[output_df$Method=="3. Linear mixed effects"] - true_effect)^2),
+                       sum((output_df$Beta[output_df$Method=="4. Fixed effects with interaction"] - true_effect)^2),
+                       sum((output_df$Beta[output_df$Method=="5. Fixed effects no interaction"] - true_effect)^2)) / nsims
+
+comparison_df[,2:4] <- apply(comparison_df[,2:4], 2, round, digits=3)
+
+colnames(comparison_df) <- c("Method", "Bias", "SE", "MSE")
+
+comparison_df
+```
+
+The fixed effects with interactions is clearly the worst model: it actually just takes study 1 as the estimated effect and fits adjustments for the rest of the studies. The raw means also does rather poorly with a higher standard error than the other methods. Fixed effects with no interactions does the best when all the participants in all the studies are from the same distribution, but its standard error is higher when there are by-study differences. Linear mixed effects performs very well in both scenarios, and the likelihood method also does quite well.
+
+5. Under the random slopes model specified above but assuming an intercept of 0, given a new $X$ from a new study, find the probability that its associated $Y$ value will be less than $\tau$. You can leave your answer as a double integral.
+
+Conditioning on the group $\beta_i$ and applying the Law of Total Probability,
+
+$$\begin{aligned}
+P(Y<\tau|X)&=\int_{-\infty}^\infty P(Y<\tau|\beta_i, X)P(\beta_i)d\beta_i\\
+&= \int_{-\infty}^\infty \int_{-\infty}^\tau\frac{1}{\sqrt{2\pi}\sigma_Y}e^{-\frac{1}{2}\left(\frac{y-X\beta_i}{\sigma_Y}\right)^2}\frac{1}{\sqrt{2\pi}\sigma_\beta}e^{-\frac{1}{2}\left(\frac{\beta_i-\beta}{\sigma_\beta}\right)^2}dyd\beta_i
+\end{aligned}$$
+
+\newpage
+
+# Crops continued
+
+This problem will deal with a dataset of country-level statistics from [UNdata](https://data.un.org/), [Varieties of Democracy](https://v-dem.net/data/the-v-dem-dataset/), and the [World Bank](https://data.worldbank.org/indicator/AG.LND.PRCP.MM).
 
 ```{r, cache=T, warning=FALSE, echo=F}
 countries <- read.csv("data/country_stats.csv", check.names = F)
 countries_2010 <- countries[countries$Year == 2010,]
 
 colnames(countries_2010) <- case_when(colnames(countries_2010) == "GDP per capita (US dollars)" ~ "GDP",
-                                        colnames(countries_2010) == "Urban population (percent)" ~ "Urban",
-                                        colnames(countries_2010) == "Population aged 60+ years old (percentage)" ~ "Elderly",
-                                        colnames(countries_2010) == "Arable land (% of total land area)" ~ "Arable",
-                                        colnames(countries_2010) == "Supply per capita (gigajoules)" ~ "Energy",
-                                        colnames(countries_2010) == "Unemployment rate - Total" ~ "Unemployment",
-                                        colnames(countries_2010) == "Tourist/visitor arrivals (thousands)" ~ "Tourists",
+                                      colnames(countries_2010) == "Arable land (% of total land area)" ~ "Arable",
+                                        colnames(countries_2010) == "Precipitation (mm)" ~ "Precipitation",
                                         TRUE ~ colnames(countries_2010)
                                         )
 ```
 
+1. The following shows a quartic regression model to predict the percent of arable land from the annual precipitation. The weighted model is weighted by the log GDP per capita (the idea being that wealthier countries might have better measurement and reporting). The mixed effects model uses random intercepts for each world region (e.g., because temperature can differ by region). Interpret the differences.
 
-```{r, include=F, cache=T}
-RMSE = function(y,yhat){
-  SSE = sum((y-yhat)^2)
-  return(sqrt(SSE/length(y)))  
-}
-```
+```{r, cache=T, echo=F, fig.width=6, fig.height=3.5, fig.align='center', warning=F}
+lm_weight <- lm(Arable~poly(Precipitation, 4, raw = TRUE), countries_2010, weight=log(GDP))
 
-1. The following is a fit decision tree to predict GDP per capita along with RMSE and $R^2$ statistics for the tree's predictions relative to the true values. The decision tree uses `minsplit=1, cp=0, maxdepth=20` on the variables:
-- `Urban`: Percent of people living in urban areas
-- `Elderly`: Percent of people over the age of 60
-- `Arable`: Percent of total land area that is farmable
-- `Energy`: Gigajoules of energy produced per person
-- `Unemployment`: Unemployment rate as a percent
-- `Tourists`: Thousands of tourist/visitor arrivals
+lmer1 <- lmer(Arable~poly(Precipitation, 4, raw = TRUE) + (1 | Region), 
+              countries_2010, weight=log(GDP))
 
-The 2010 US values for these variables are shown below. What is the US's estimated GDP per capita?
+dummy_x <- seq(min(countries_2010$Precipitation, na.rm = T), max(countries_2010$Precipitation, na.rm=T), 1)
+lm_unweighted <- lm(Arable~poly(Precipitation, 4, raw = TRUE), countries_2010)
+lm_unweighted_pred <- predict(lm_unweighted, newdata=data.frame(Precipitation = dummy_x))
+lm_weighted_pred <- predict(lm_weight, newdata=data.frame(Precipitation = dummy_x))
+countries_subset <- countries_2010[!is.na(countries_2010$Precipitation) & 
+                                !is.na(countries_2010$Arable) & 
+                                !is.na(countries_2010$GDP),]
 
-```{r, cache=T, echo=F, fig.width=8, fig.height=4, fig.align='center', warning=F}
-set.seed(139)
+# Trying to get the region weighting reasonable
+lmer_pred <- predict(lmer1, newdata=data.frame(Precipitation = rep(dummy_x, length(unique(countries_subset$Region))), 
+                                               Region = rep(unique(countries_subset$Region), each=length(dummy_x))
+                                               ))
+lmer_pred <- matrix(lmer_pred, ncol = length(unique(countries_subset$Region)))
+lmer_pred <- as.vector(lmer_pred %*% as.matrix(unname(table(countries_subset$Region)/sum(table(countries_subset$Region)))))
 
-# Fit tree
-tree1 <- rpart(GDP ~ Urban + Elderly + Arable + Energy + Unemployment + Tourists, countries_2010,
-               control = list(minsplit=1,cp=0,maxdepth=20))
+dummy_df <- data.frame(dummy_x, "Unweighted linear model" = lm_unweighted_pred, 
+                       "Weighted linear model" = lm_weighted_pred, 
+                       "Mixed effects model" = lmer_pred, check.names = F)
+dummy_df <- melt(dummy_df, id.vars="dummy_x")
+colnames(dummy_df) = c("dummy_x", "Model", "value")
 
-# Plot tree
-rpart.plot(tree1)
-
-# RMSE
-rmse_val <- RMSE(countries_2010$GDP[!is.na(countries_2010$GDP)], 
-     predict(tree1, new=countries_2010)[!is.na(countries_2010$GDP)])
-
-# Rsq
-rsq <- 1 - sum((countries_2010$GDP[!is.na(countries_2010$GDP)] - 
-    predict(tree1, new=countries_2010)[!is.na(countries_2010$GDP)])^2) / 
-  sum((countries_2010$GDP[!is.na(countries_2010$GDP)] - 
-        mean(countries_2010$GDP[!is.na(countries_2010$GDP)]))^2)
-
-c("RMSE" = round(rmse_val, 3), "R2" = round(rsq, 3))
-```
-
-```{r, echo=F, cache=T}
-df_subset <- countries_2010[countries_2010$Country == "United States of America", c("Urban", "Elderly", "Arable", "Energy", "Unemployment", "Tourists")]
-rownames(df_subset) <- NULL
-knitr::kable(df_subset)
-```
-We step right (Energy >= 91), then right (Urban >= 79), then left (Elderly < 19), then left (Arable >= 1.4) to get \$31,000 (the true value is \$30678).
-
-2. The following is a well-pruned regression tree to predict GDP per capita from the predictors above. The model starts with `minsplit=1, cp=0, maxdepth=20` and uses 10-fold cross-validation to prune based on the complexity parameter `cp`. Interpret the differences between the previous tree and the pruned one. What is the US's estimated GDP per capita?
-
-```{r, cache=T, echo=F, fig.width=8, fig.height=4, fig.align='center', warning=F}
-
-tree2 = prune(tree1,cp = tree1$cptable[,"CP"][which.min(tree1$cptable[,"xerror"])])
-
-rpart.plot(tree2)
-
-# RMSE
-rmse_val <- RMSE(countries_2010$GDP[!is.na(countries_2010$GDP)], 
-     predict(tree2, new=countries_2010)[!is.na(countries_2010$GDP)])
-
-# Rsq
-rsq <- 1 - sum((countries_2010$GDP[!is.na(countries_2010$GDP)] - 
-    predict(tree2, new=countries_2010)[!is.na(countries_2010$GDP)])^2) / 
-  sum((countries_2010$GDP[!is.na(countries_2010$GDP)] - 
-        mean(countries_2010$GDP[!is.na(countries_2010$GDP)]))^2)
-
-c("RMSE" = round(rmse_val, 3), "R2" = round(rsq, 3))
-```
-
-The RMSE and $R^2$ are worse than in the first tree, but this is likely because the first model is overfit. The predicted US GDP per capita is now \$37000 since the last arable split is gone.
-
-3. The following is a set of random forest models to predict GDP per capita from the above predictors considering `mtry` 1 through 7 and `maxnodes` 2, 5, 10, 20, and 40 with `ntree=200`. The plot shows the $R^2$ of the out-of-bag predictions versus the true values for each parameter combination. Choose the best `mtry` and `maxnodes`. 
-
-```{r, cache=T, echo=F, fig.width=4.5, fig.height=3, fig.align='center', warning=F}
-# Random forest doesn't handle missing data well so keep only observations with no NAs
-countries_subset <- countries_2010[!is.na(log2(countries_2010$`GDP`)) & 
-                                   !is.na(countries_2010$`Urban`) &
-                                   !is.na(countries_2010$Elderly) &
-                                     !is.na(countries_2010$`Arable`) &
-                                     !is.na(countries_2010$`Energy`) &
-                                     !is.na(countries_2010$`Unemployment`) &
-                                     !is.na(countries_2010$`Tourists`),]
-
-param_grid = expand.grid(mtries = 1:7, maxnodes = c(2, 5, 10, 20, 40))
-
-RMSEs <- vector(length = nrow(param_grid))
-rsqs <- vector(length = nrow(param_grid))
-
-for (i in 1:nrow(param_grid)) {
-  mtry = param_grid[i, 1]
-  maxnode = param_grid[i, 2]
-  
-  # Fit the random forest
-  rf <- randomForest(GDP ~ Urban + Elderly + Arable + Energy + Unemployment + Tourists, 
-                     countries_subset, maxnodes=maxnode, mtry=mtry, ntree=200, na.action = na.omit)
-  
-  # If it has better RMSE, keep it as the best
-  RMSEs[i] <- RMSE(countries_subset$GDP, predict(rf, new=countries_subset))
-  rsqs[i] <- 1 - sum((countries_subset$GDP[!is.na(countries_subset$GDP)] - 
-    predict(rf, new=countries_subset)[!is.na(countries_subset$GDP)])^2) / 
-  sum((countries_subset$GDP[!is.na(countries_subset$GDP)] - 
-        mean(countries_subset$GDP[!is.na(countries_subset$GDP)]))^2)
-}
-
-fitting_df <- data.frame(param_grid, RMSEs, rsqs)
-
-
-rfsave <- randomForest(GDP ~ Urban + Elderly + Arable + Energy + Unemployment + Tourists, 
-                     countries_subset, maxnodes=fitting_df$maxnodes[which.max(fitting_df$rsqs)], 
-                     mtry=fitting_df$mtries[which.max(fitting_df$rsqs)], ntree=200, na.action = na.omit)
-
-ggplot(fitting_df, aes(x=as.factor(mtries), y=as.factor(maxnodes), fill= rsqs)) + 
-  geom_tile() + 
-  theme_bw() + 
-  xlab("mtry") + 
-  ylab("maxnodes") + 
-  labs(fill = "R2")
-```
-Any random forest with a maximum of 40 nodes and at least 2 included predictors sampled at each split would work.
-
-4. The following plot shows how GDP per capita changes with gigajoules of energy produced per person holding the other variables constant. We estimate just this effect by, for each country, replacing the `Energy` term with the range of energies in consideration and then averaging over the countries for each value in our range. We are comparing our decision tree from question 1, our best random forest from question 3, and a decision tree fit only on `Energy`. Describe what you see in a few sentences.
-
-```{r, cache=T, echo=F, fig.width=6.5, fig.height=3.5, fig.align='center', warning=F}
-# Copy original data 
-dummy_df = countries_subset
-
-# Sequence of possible life expectancies
-dummy_energy = seq(min(countries_subset$Energy), max(countries_subset$Energy), 0.1)
-
-# Show original points
-tree3 <- rpart(GDP ~ Energy, countries_2010, control = list(minsplit=1,cp=0,maxdepth=20))
-
-# Get predictions on the dummy data
-yhats=matrix(NA,nrow=nrow(dummy_df),ncol=length(dummy_energy))
-yhats2=matrix(NA,nrow=nrow(dummy_df),ncol=length(dummy_energy))
-yhats3=matrix(NA,nrow=nrow(dummy_df),ncol=length(dummy_energy))
-for(i in 1:nrow(dummy_df)){
-  # For each original data points, test all dummy life expectancies
-  rows=dummy_df[rep(i,length(dummy_energy)),]
-  rows$Energy=dummy_energy
-  yhat = predict(tree1,new=rows)
-  yhats[i,]=yhat
-  yhat2 = predict(rfsave, new=rows)
-  yhats2[i,]=yhat2
-  yhat3 = predict(tree3, new=rows)
-  yhats3[i,]=yhat3
-}
-
-# Take the mean over the predicted OSPI at each dummy life expectancy
-mean_yhat = apply(yhats, 2, mean)
-mean_yhat2 = apply(yhats2, 2, mean)
-mean_yhat3 = apply(yhats3, 2, mean)
-
-dummy_results <- data.frame("Energy" = dummy_energy, "Tree (1)" = mean_yhat, 
-                            "Random forest (3)" = mean_yhat2, "Tree only Energy" = mean_yhat3, check.names = F)
-
-dummy_results <- melt(dummy_results, id.vars=c("Energy"))
-
-ggplot(countries_subset, aes(x=Energy, y=GDP)) + 
-  geom_line(data=dummy_results, aes(x=Energy, y=value, color = variable), linewidth=1)+
+ggplot(countries_2010, aes(x=Precipitation, y=Arable)) + 
   geom_point() + 
-  scale_y_continuous(trans = 'log', breaks=c(500, 1000, 2000, 5000, 10000, 20000, 50000, 100000)) + 
-  scale_x_continuous(trans = 'log', breaks=c(10, 20, 50, 100, 200, 500, 1000)) + 
-  theme_bw() + 
-  ylab("GDP per capita") + 
-  xlab("Energy supply per capita (gigajoules)") + 
-  labs(color="Model")
+  geom_line(data=dummy_df, aes(y=value, x=dummy_x, col=Model), size=0.5) + 
+  xlab("Average annual precipitation (mm per year)") + 
+  ylab("Arable land (% of land area)") + 
+  theme_bw()
 ```
-
-The tree using only `Energy` is most consistent with the observed data (and probably overfit) because the model can only use `Energy` as the splitting predictor. The other decision tree can split on other variables, so its reliance on the single variable `Energy` is not as strong. The random forest shows this even more clearly: because many splits don't even consider `Energy`, the trend is much less consistent with the energy supply alone, but the relationship is the smoothest.
-
-5. Which predictors are most important in the first tree (left) and the best random forest (right)?  How do they compare in relative importance?  
-
-```{r, cache=T, echo=F, fig.width=5, fig.height=3.5, fig.align='center', warning=F}
-par(mfrow=c(1, 2))
-barplot(tree1$variable.importance, horiz=T, las=2, cex.names=0.5)
-barplot(sort(rfsave$importance[,1], decreasing = T), horiz=T, las=2, cex.names=0.5)
-```
-
-The actual units on both of these are somewhat arbitrary (see the `rpart` and `randomForest` documentation for the details), but we see that energy consumption is the most important variable in both models; the urban and elderly populations are important; and the number of tourists, the unemployment rate, and proportion of arable land are the least important.
-
-
-
-
-
-
-
+The unweighted and weighted linear models are very similar. The random intercepts model predicts a lower proportion of arable land across all precipitations. All models look roughly similar with similar precipitations at which arable land is maximized.

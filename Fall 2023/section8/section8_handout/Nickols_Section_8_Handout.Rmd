@@ -82,36 +82,19 @@ Here are a few facts that will be useful here and on the homework:
 \newpage
 1. Verify that using the usual weights for least squares regression, this formula reduces to the usual estimator for $\hat{\vv\beta}$.
 
-In our usual least squares regression, $\mathbf{W}=\mathbf{I}$, so 
-
-$$\hat{\vv\beta}=(\mathbf{X}^T\mathbf{I}^T\mathbf{I}\mathbf{X})^{-1}\mathbf{X}^T\mathbf{I}^T\mathbf{I}\vv{Y}=(\mathbf{X}^T\mathbf{X})^{-1}\mathbf{X}^T\vv{Y}$$
-as expected.
+\vspace{4 cm}
 
 2. If $\mathbf{W}=c\mathbf{I}$ for some non-zero constant $c$, what is $\hat{\vv\beta}$? What does this say about when $\mathbf{W}$ is useful?
 
-$$\hat{\vv\beta}=(c^2\mathbf{X}^T\mathbf{I}^T\mathbf{I}\mathbf{X})^{-1}c^2\mathbf{X}^T\mathbf{I}^T\mathbf{I}\vv{Y}=(\mathbf{X}^T\mathbf{X})^{-1}\mathbf{X}^T\vv{Y}$$
-which means the matrix of weights only changes the fit coefficients if the weights are different.
+\vspace{4 cm}
 
 3. Find the bias of $\hat{\vv\beta}$ for $\vv{\beta}$.
 
-$$\begin{aligned}
-E(\hat{\vv\beta})-\vv{\beta}&=E\left[(\mathbf{X}^T\mathbf{W}^T\mathbf{W}\mathbf{X})^{-1}\mathbf{X}^T\mathbf{W}^T\mathbf{W}\vv{Y}\right]-\vv{\beta}\\
-&=(\mathbf{X}^T\mathbf{W}^T\mathbf{W}\mathbf{X})^{-1}\mathbf{X}^T\mathbf{W}^T\mathbf{W}E\left[\vv{Y}\right]-\vv{\beta}\\
-&=(\mathbf{X}^T\mathbf{W}^T\mathbf{W}\mathbf{X})^{-1}\mathbf{X}^T\mathbf{W}^T\mathbf{W}\mathbf{X}\vv{\beta}-\vv{\beta}\\
-&=\vv{0}
-\end{aligned}$$
+\vspace{6 cm}
 
 4. Find the variance-covariance matrix of $\hat{\vv\beta}$ in matrix form. What does this reduce to when $\mathbf{W}=\mathbf{I}$? You may find it useful to let $\mathbf{A}=(\mathbf{X}^T\mathbf{W}^T\mathbf{W}\mathbf{X})^{-1}\mathbf{X}^T\mathbf{W}^T\mathbf{W}$ throughout.
 
-$$\begin{aligned}
-\textrm{Cov}(\hat{\vv\beta})&=\textrm{Cov}\left[\mathbf{A}\vv{Y}\right]\\
-&=\mathbf{A}\textrm{Cov}\left(\vv{Y}\right)\mathbf{A}^T\\
-&=\mathbf{A}\textrm{Cov}\left(\vv{\epsilon}\right)\mathbf{A}^T\\
-&=\sigma^2\mathbf{A}\mathbf{I}\mathbf{A}^T\\
-&=\sigma^2\mathbf{A}\mathbf{A}^T\\
-\end{aligned}$$
-
-When $\mathbf{W}^T\mathbf{W}=I$, $\mathbf{A}=(\mathbf{X}^T\mathbf{X})^{-1}\mathbf{X}^T$, so $$\textrm{Cov}(\hat{\vv\beta})=\sigma^2(\mathbf{X}^T\mathbf{X})^{-1}\mathbf{X}^T\mathbf{X}(\mathbf{X}^T\mathbf{X})^{-1}=\sigma^2(\mathbf{X}^T\mathbf{X})^{-1}$$ which is the usual variance-covariance matrix for linear regression.
+\vspace{8 cm}
 
 \newpage
 
@@ -161,19 +144,19 @@ ridges=cv.glmnet(X, y, alpha=0, lambda = exp(seq(-10,10,0.1)), nfolds=10)
 
 print(ridges)
 ```
-The best ridge regression model is one with a $\lambda$ of 0.011. A $\lambda$ up to 0.091 might also be reasonable.
+\vspace{4 cm}
 
 2. The following is a plot of MSE on the validation sets against the $\lambda$'s from the previous part. Justify the previous $\lambda$ with this plot.
 
-```{r, cache=F, echo=F, fig.width=4.5, fig.height=4.5, fig.align='center'}
+```{r, cache=F, echo=F, fig.width=4.5, fig.height=3.5, fig.align='center'}
 plot(ridges)
 ```
 
-The best $\lambda$ is 0.011, which corresponds to $\log(0.011)=-4.51$ in the plot. Values of $\lambda$ slightly above this might also help in preventing overfitting.
+\vspace{4 cm}
 
 3. The following are the $\hat{\beta}$ trajectories of the main (non-interaction) effects from this model. Interpret what you see in 2-3 sentences.
 
-```{r, cache=F, fig.width=4.5, fig.height=4.5, fig.align='center', echo=F}
+```{r, cache=F, fig.width=4.5, fig.height=3.5, fig.align='center', echo=F}
 # Fit for many lambdas
 ridges_for_plot=glmnet(X, unlist(lm1$model["log2(GDP)"]), alpha=0, lambda=exp(seq(-10,10,0.1)))
 
@@ -184,22 +167,22 @@ matplot(log(ridges_for_plot$lambda),
         xlab = "log(lambda)", 
         ylab = "betas")
 ```
-We can see that the estimates vary a lot for low values of $\lambda$, but coefficients shrink to zero asymptotically. However, as $\lambda$ grows, the $\hat\beta$s never reach zero exactly as expected in ridge regression.
+\vspace{2 cm}
 
 4. Next, we'll fit a well-tuned LASSO regression model for the same question. We'll perform 10-fold cross validation to choose the optimal $\lambda$. What is the optimal model? Is this consistent with the plot?
 
-```{r, cache=F, fig.width=4.5, fig.height=4.5, fig.align='center', echo=F}
+```{r, cache=F, fig.width=4.5, fig.height=3.5, fig.align='center', echo=F}
 # Run cross validation
 lassos=cv.glmnet(X, y, alpha=1, lambda = exp(seq(-10,10,0.1)), nfolds = 10)
 
 plot(lassos)
 print(lassos)
 ```
-The best $\lambda$ is 0.00166, which corresponds to $\log(0.00166)=-6.4$ in the plot. Values of $\lambda$ slightly above this might also help in preventing overfitting.
+\vspace{2 cm}
 
 5. The following are the $\hat{\beta}$ trajectories of the main (non-interaction) effects from this model. Compare these to the ridge trajectories.
 
-```{r, cache=F, fig.width=4.5, fig.height=4.5, fig.align='center', echo=F}
+```{r, cache=F, fig.width=4.5, fig.height=3.5, fig.align='center', echo=F}
 lasso_for_plot = glmnet(X, unlist(lm1$model["log2(GDP)"]), alpha=1, lambda=exp(seq(-10,10,0.1)))
 matplot(log(lasso_for_plot$lambda),
         t(lasso_for_plot$beta[-grep(":", rownames(lasso_for_plot$beta)),]), # Remove interactions
@@ -207,7 +190,7 @@ matplot(log(lasso_for_plot$lambda),
         xlab = "log(lambda)", 
         ylab = "betas")
 ```
-The estimates vary a lot for low values of $\lambda$, and they even increase in magnitude occasionally, indicating collinearity. However, as $\lambda$ grows, more and more snap to 0. Compared to ridge regression, these coefficients decrease more sporadically but actually become 0 rather than just approaching 0.
+\vspace{2 cm}
 
 6. What is the best regularized/penalized regression model?
 
@@ -216,7 +199,7 @@ df <- data.frame(`Ridge, lambda=0.011`=min(ridges$cvm), `LASSO, lambda=0.0017`=m
 rownames(df) <- "MSE"
 df
 ```
-These are the minimum means of cross validated error (the cross validated MSE using the optimal $\lambda$). Ridge has a slightly lower MSE on cross-validation, so ridge with $\lambda=0.011$ is the best regularized model.
+\vspace{2 cm}
 
 \newpage
 
@@ -230,39 +213,35 @@ State whether the following functions could or couldn't be used as penalization 
 
 1. $p(\hat{\vv{\beta}})=\sum_{i=1}^k\hat{\beta_i}$
 
-No: the $\hat\beta_i$ would just get more and more negative.
+\vspace{1 cm}
 
 2. $p(\hat{\vv{\beta}})=\sum_{i=1}^k\hat{\beta_i}^4$
 
-Yes: you could use this if you wanted to very strongly penalize $\hat\beta$s with large magnitudes.
+\vspace{1 cm}
 
 3. $p(\hat{\vv{\beta}})=\sum_{i=1}^k\log(\hat{\beta_i})$
 
-No: negative $\hat{\beta_i}$ would break this.
+\vspace{1 cm}
 
 4. $p(\hat{\vv{\beta}})=\sum_{i=1}^k\log(|\hat{\beta_i}|)$
 
-No: the $\hat{\beta_i}$ would always go to 0 since that would give $-\infty$ loss.
+\vspace{1 cm}
 
 5. $p(\hat{\vv{\beta}})=\sum_{i=1}^k1/|\hat{\beta_i}|$
 
-No: larger $\hat{\beta}$s give a smaller loss.
+\vspace{1 cm}
 
 6. $p(\hat{\vv{\beta}})=-\sum_{i=1}^k1/|\hat{\beta_i}|$
 
-Still no: the $\hat{\beta_i}$ would always go to 0 since that would give $-\infty$ loss.
+\vspace{1 cm}
 
 7. What general requirements do we need for a penalization function?
 
-The loss should increase (or remain 0) with coefficients of increasing magnitude, and it should have a (preferably global) minimum.
+\vspace{1 cm}
 
 8. Write a valid penalization function that we haven't studied before.
 
-One example would be $$p(\hat{\vv{\beta}})=\sum_{i=1}^kf(\hat\beta_i)\textrm{ with } f(\hat\beta_i)=\begin{cases} 
-      0 & |\hat\beta_i|\leq \delta \\
-      |\hat\beta_i| & \textrm{Otherwise} \\
-   \end{cases}$$
-for some $\delta$, which applies no penalty once a $\hat\beta_i$ is within $\delta$ of 0.
+\vspace{4 cm}
 
 \newpage
 
@@ -270,7 +249,7 @@ for some $\delta$, which applies no penalty once a $\hat\beta_i$ is within $\del
 
 1. For what $\lambda$s would LASSO and Ridge give the same model?
 
-$\lambda=0,\infty$ since there would be either no penalization or the model would just be $\bar{Y}$.
+\vspace{2 cm}
 
 2. Below are four $\hat\beta$ trajectory plots for ridge regressions. Each comes from a data set with 50 data points. One trajectory comes from data with no built-in correlation between the predictors; one comes from data with moderate and equal correlation among all the predictors; one comes from data with moderate random (but fixed) correlation among the predictors; and one is fake (and impossible). Determine which is which.
 
@@ -367,5 +346,4 @@ annotate_figure(figure, left = textGrob("betas", rot = 90, vjust = 1, gp = gpar(
                   bottom = textGrob("log(lambda)", gp = gpar(cex = 1.3)))
 
 ```
-The first plot is the random correlation as seen by its peaks rising and falling more sporadically. The second is the no correlation plot because the slopes mostly fall independently of each other. The third is impossible because all the slopes rise at the beginning (but at least one must fall for the other to rise). The fourth is the strong correlation as seen by the fact that all the slopes are about the same after $\lambda=e^2$.
 

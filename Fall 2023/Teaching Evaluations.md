@@ -1,0 +1,30 @@
+# Teaching evaluations
+
+## Course assistant evaluation
+
+|                                                                                    | Count | Excellent | Very Good | Good | Fair | Unsatisfactory | Instructor Mean | Department Mean | Division Mean |
+|------------------------------------------------------------------------------------|-------|-----------|-----------|------|------|----------------|-----------------|------------------|---------------|
+| Evaluate your Section Leader overall.                                              | 30    | 90\%       | 10\%        | 0\%   | 0\%   | 0\%             | 4.90            | 4.81             | 4.63          |
+| Gives effective lectures or presentations                                          | 26    | 92\%      | 8\%        | 0\%   | 0\%   | 0\%             | 4.92            | 4.79             | 4.58          |
+| Facilitates discussion and encourages participation                                | 26    | 92\%       | 8\%        | 0\%   | 0\%   | 4\%             | 4.92            | 4.81             | 4.61          |
+| Is accessible outside of class (including after class, office hours, e-mail, etc.) | 28    | 89\%      | 11\%        | 0\%   | 0\%   | 0\%             | 4.89            | 4.83             | 4.66          |
+| Generates enthusiasm for the subject matter                                        | 27    | 89\%       | 7\%        | 4\%   | 0\%   | 4\%             | 4.85            | 4.79             | 4.58          |
+| Gives useful feedback on assignments                                               | 28    | 86\%       | 11\%        | 4\%   | 0\%   | 4\%             | 4.82            | 4.84             | 4.59          |
+| Returns assignments in a timely fashion                                            | 28    | 86\%       | 7\%        | 7\%   | 0\%   | 0\%             | 4.79            | 4.85             | 4.56          |
+
+## Course assistant comments
+
+- Will Nickols is the best teacher I've ever had in my entire life, and I cannot say a singular negative thing about him! He is truly the reason I learned anything about statistics this semester. He is the best! Such an amazing teacher, so good at explaining everything, and would stay super long after his office hours were over to help us! The best person ever, appreciate him so much
+- It is impossible to understate the importance of Will to the logistical functioning and support network of the class. Will was Atlas holding up the entirety of Ed and deserves every possible commendation. He tirelessly answered upward of 90% of all students' questions in the course. Without Will, the class would have had no support network, and the logistical functioning of the course would have degraded. Will personally contribute enormously to my becoming a better statistician. He is the best student CA I have ever taken a course with. Well organized, understands the material, and incredibly selfless. Will could teach this class himself.
+- Will has been the head TF for two classes I have taken now, and it never ceases to amaze me how well he can clarify some of the most seemingly confusing concepts and help you understand the material at a level you never thought you would be able to reach.
+- His teaching was exceptional.
+- Awesome TF, super approachable with clear explanations for any + all questions. Very on top of Ed, honestly seemed like the only person answering questions on Ed. Probably the first person who comes to mind when I think of 139. Go off Will!
+- Will basically ran this course. That's not a knock on James at all but just a testament to all the work that Will did. He basically replied to every single Ed discussion question and helped keep the course on track.
+- This class does not function without Will. He was the glue that kept everyone sane. He always came through at section and office hours.
+- Will was carrying this course on his back. His office hours were the most helpful!
+- Will is such an amazing TF! His sections are incredibly helpful for understanding the material and with problem sets. Will always goes above and beyond, including sending follow–up emails after section for section summaries and staying late for his office hours!
+- Will has an excellent grasp on the content and is the best TF for the job. He's really good at answering questions, explaining concepts, resolving gaps in understanding, and going through section exercises that he designed to target complex course concepts very well. An excellent TF.
+- Will makes great materials and runs helpful office hours, often staying late to help students if necessary. I wish I'd been free during his section time because he's talented at making content approachable/intuitive.
+- Will is evidently incredibly intelligent, but he also never fails to patiently explain challenging concepts in a way that is understandable to people who are not as intelligent as he is :)
+- Mr. Nickols has a rare gift for taking intricate ideas and making them accessible to learners of all levels. His commitment to elucidating concepts from multiple perspectives not only simplifies the learning process but also fosters a deep appreciation for the depth and breadth of knowledge in STAT139. His passion for teaching shines through, inspiring curiosity and igniting the intellectual growth of those fortunate enough to be under his tutelage. Will Nickols' contributions to education and the dissemination of knowledge exemplify the highest standards of teaching excellence. His dedication to enhancing the learning experience leaves an indelible mark on the minds of his students, making him a true beacon of brilliance in the realm of education and explanation.
+- Though I wasn't a member of your section, I just wanted to thank you for all the time you dedicated to this class. Your feedback on the final project was extremely prompt and helpful, and most impressively, your consistent responses on Ed were amazing and immensely useful throughout the course. I really get the feeling that this course wouldn't have been nearly as well–run without you. So thanks for everything, and I hope you have a great break!
